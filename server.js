@@ -85,7 +85,7 @@ const directories = {
     worlds: 'public/worlds/',
     avatars: 'public/User Avatars',
     groups: 'public/groups/',
-    groupChats: 'public/group chats',
+    groupChats: 'public/group chats/',
 };
 
 // CSRF Protection //
