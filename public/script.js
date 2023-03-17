@@ -1631,7 +1631,7 @@ async function Generate(type, automatic_trigger) {
                             if (type === "group_chat") {
                                 let avatarImg = default_avatar;
                                 if (characters[this_chid].avatar != "none") {
-                                    avatarImg = `characters/${characters[this_chid].avatar}?${Date.now()}`;
+                                    avatarImg = `characters/${characters[this_chid].avatar}#${Date.now()}`;
                                 }
                                 chat[chat.length - 1]["is_name"] = true;
                                 chat[chat.length - 1]["force_avatar"] = avatarImg;
