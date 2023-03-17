@@ -109,7 +109,7 @@ async function getGroupChat(id) {
                         : default_ch_mes;
                     mes["force_avatar"] =
                         character.avatar != "none"
-                            ? `characters/${character.avatar}?${Date.now()}`
+                            ? `characters/${character.avatar}#${Date.now()}`
                             : default_avatar;
                     chat.push(mes);
                     addOneMessage(mes);
