@@ -74,8 +74,8 @@ function humanizedISO8601DateTime() {
 var is_colab = true;
 var charactersPath = 'public/characters/';
 var chatsPath = 'public/chats/';
-var groupsPath = 'public/groups';
-var groupChatsPath = 'public/group chats';
+var groupsPath = 'public/groups/';
+var groupChatsPath = 'public/group chats/';
 
 if (is_colab && process.env.googledrive == 2) {
     charactersPath = '/content/drive/MyDrive/TavernAI/characters/';
