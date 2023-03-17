@@ -74,9 +74,14 @@ function humanizedISO8601DateTime() {
 var is_colab = true;
 var charactersPath = 'public/characters/';
 var chatsPath = 'public/chats/';
+var groupsPath = 'public/groups';
+var groupChatsPath = 'public/group chats';
+
 if (is_colab && process.env.googledrive == 2) {
     charactersPath = '/content/drive/MyDrive/TavernAI/characters/';
     chatsPath = '/content/drive/MyDrive/TavernAI/chats/';
+    groupsPath = '/content/drive/MyDrive/TavernAI/groups/';
+    groupChatsPath = '/content/drive/MyDrive/TavernAI/group chats/';    
 }
 const jsonParser = express.json({ limit: '100mb' });
 const urlencodedParser = express.urlencoded({ extended: true, limit: '100mb' });
