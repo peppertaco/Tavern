@@ -622,6 +622,7 @@ app.post("/editcharacter", urlencodedParser, async function (request, response) 
             img_path = "uploads/";
             img_file = filedata.filename;
 
+            invalidateThumbnail('avatar', request.body.avatar_url);
             await charaWrite(img_path + img_file, char, target_img, response, 'Character saved');
             //response.send('Character saved');
         }
@@ -646,6 +647,7 @@ app.post("/deletecharacter", urlencodedParser, function (request, response) {
     }
 
     fs.rmSync(avatarPath);
+    invalidateThumbnail('avatar', request.body.avatar_url);
     let dir_name = (request.body.avatar_url.replace('.png', ''));
 
     if (dir_name !== sanitize(dir_name)) {
@@ -812,6 +814,36 @@ app.post("/delbackground", jsonParser, function (request, response) {
     invalidateThumbnail('bg', request.body.bg);
     return response.send('ok');
 });
+
+app.post("/delchat", jsonParser, function (request, response) {
+    console.log('/delchat entered');
+    if (!request.body) {
+        console.log('no request body seen');
+        return response.sendStatus(400);
+    }
+
+    if (request.body.chatfile !== sanitize(request.body.chatfile)) {
+        console.error('Malicious chat name prevented');
+        return response.sendStatus(403);
+    }
+
+    const fileName = path.join(directories.chats, '/', sanitize(request.body.id), '/', sanitize(request.body.chatfile));
+    if (!fs.existsSync(fileName)) {
+        console.log('Chat file not found');
+        return response.sendStatus(400);
+    } else {
+        console.log('found the chat file: ' + fileName);
+        /* fs.unlinkSync(fileName); */
+        fs.rmSync(fileName);
+        console.log('deleted chat file: ' + fileName);
+
+    }
+
+
+    return response.send('ok');
+});
+
+
 app.post("/downloadbackground", urlencodedParser, function (request, response) {
     response_dw_bg = response;
     if (!request.body) return response.sendStatus(400);
@@ -1679,7 +1711,7 @@ async function generateThumbnail(type, file) {
         const cachedStat = fs.statSync(pathToCachedFile);
 
         if (originalStat.mtimeMs > cachedStat.ctimeMs) {
-            console.log('Original file changed. Regenerating thumbnail...');
+            //console.log('Original file changed. Regenerating thumbnail...');
             shouldRegenerate = true;
         }
     }
@@ -1692,11 +1724,11 @@ async function generateThumbnail(type, file) {
         return null;
     }
 
-    const imageSizes = { 'bg': [160, 90], 'avatar': [42, 42] };
+    const imageSizes = { 'bg': [160, 90], 'avatar': [96, 96] };
     const mySize = imageSizes[type];
 
     const image = await jimp.read(pathToOriginalFile);
-    await image.cover(mySize[0], mySize[1]).quality(60).writeAsync(pathToCachedFile);
+    await image.cover(mySize[0], mySize[1]).quality(95).writeAsync(pathToCachedFile);
 
     return pathToCachedFile;
 }
