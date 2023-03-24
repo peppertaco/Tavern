@@ -1637,7 +1637,7 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
                                 console.log('entering chat update for groups');
                                 let avatarImg = 'img/ai4.png';
                                 if (characters[this_chid].avatar != 'none') {
-                                    avatarImg = `characters/${characters[this_chid].avatar}?${Date.now()}`;
+                                    avatarImg = `characters/${characters[this_chid].avatar}#${Date.now()}`;
                                 }
                                 chat[chat.length - 1]['is_name'] = true;
                                 chat[chat.length - 1]['force_avatar'] = avatarImg;
