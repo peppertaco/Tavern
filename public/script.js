@@ -68,8 +68,6 @@ import {
     nai_settings,
 } from "./scripts/nai-settings.js";
 
-import { showBookmarksButtons } from "./scripts/bookmarks.js";
-
 import { debounce, delay } from "./scripts/utils.js";
 
 //exporting functions and vars for mods
@@ -97,8 +95,6 @@ export {
     setSendButtonState,
     selectRightMenuWithAnimation,
     setRightTabSelectedClass,
-    openCharacterChat,
-    saveChat,
     messageFormating,
     chat,
     this_chid,
@@ -119,6 +115,7 @@ export {
     system_message_types,
     talkativeness_default,
     default_ch_mes,
+    saveChat,
 }
 
 // API OBJECT FOR EXTERNAL WIRING
@@ -154,19 +151,9 @@ let active_character;
 let backgrounds = [];
 const default_avatar = "img/ai4.png";
 const system_avatar = "img/five.png";
-let is_colab = true;
-let is_checked_colab = true;
+let is_colab = false;
+let is_checked_colab = false;
 let is_mes_reload_avatar = false;
-let optionsPopper = Popper.createPopper(document.getElementById('options_button'), document.getElementById('options'), {
-    modifiers: [
-        {
-            name: 'offset',
-            options: {
-                offset: [-20, -260],
-            },
-        },
-    ],
-});
 
 const durationSaveEdit = 200;
 const saveSettingsDebounced = debounce(() => saveSettings(), durationSaveEdit);
@@ -280,7 +267,6 @@ var animation_rm_easing = "";
 
 var popup_type = "";
 var bg_file_for_del = "";
-var chat_file_for_del = "";
 var online_status = "no_connection";
 
 var api_server = "";
@@ -565,9 +551,9 @@ function printCharacters() {
     $("#rm_print_characters_block").empty();
     //console.log('printCharacters() -- sees '+characters.length+' characters.');
     characters.forEach(function (item, i, arr) {
-        let this_avatar = default_avatar;
+        var this_avatar = default_avatar;
         if (item.avatar != "none") {
-            this_avatar = `/thumbnail?type=avatar&file=${encodeURIComponent(item.avatar)}&${Date.now()}`;
+            this_avatar = "characters/" + item.avatar + "#" + Date.now();
         } //RossAscends: changed 'prepend' to 'append' to make alphabetical sorting display correctly.
         $("#rm_print_characters_block").append(
 
@@ -625,10 +611,10 @@ async function getBackgrounds() {
         //background = getData;
         //console.log(getData.length);
         for (const bg of getData) {
-            const thumbPath = `/thumbnail?type=bg&file=${encodeURIComponent(bg)}`;
+            const thumbPath = `/thumbnail?type=bg&file=${bg}`;
             $("#bg_menu_content").append(
                 `<div class="bg_example" bgfile="${bg}" class="bg_example_img" style="background-image: url('${thumbPath}');">
-                <div bgfile="${bg}" class="bg_example_cross">
+                <div bgfile="${bg}" class=bg_example_cross style="background-image: url(img/cross.png);">
             </div>`
             );
         }
@@ -699,38 +685,6 @@ async function delBackground(bg) {
     });
     if (response.ok === true) {
 
-    }
-}
-
-async function delChat(chatfile) {
-    const response = await fetch("/delchat", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token": token,
-        },
-        body: JSON.stringify({
-            chatfile: chatfile,
-            id: characters[this_chid].name
-        }),
-    });
-    if (response.ok === true) {
-        //close past chat popup
-        $("#select_chat_cross").click();
-
-        //this is a copy of what 'start new chat' does, just without the popup and confirmation
-        //not an ideal solution, and needs to be smarter
-        clearChat();
-        chat.length = 0;
-        characters[this_chid].chat = name2 + " - " + humanizedDateTime();
-        $("#selected_chat_pole").val(characters[this_chid].chat);
-        saveCharacterDebounced();
-        getChat();
-
-        //open the history view again after 100ms
-        setTimeout(function () { $("#option_select_chat").click() }, 100);
-        //hide option popup menu
-        $("#options").hide();
     }
 }
 
@@ -814,7 +768,7 @@ function addOneMessage(mes, type = "normal") {
             avatarImg = system_avatar;
         } else {
             if (characters[this_chid].avatar != "none") {
-                avatarImg = `/thumbnail?type=avatar&file=${encodeURIComponent(characters[this_chid].avatar)}`;
+                avatarImg = "characters/" + characters[this_chid].avatar;
                 if (is_mes_reload_avatar !== false) {
                     avatarImg += "#" + is_mes_reload_avatar;
                 }
@@ -1900,17 +1854,6 @@ function getChatResult() {
     select_selected_character(this_chid);
 }
 
-async function openCharacterChat(file_name) {
-    characters[this_chid]["chat"] = file_name;
-    clearChat();
-    chat.length = 0;
-    await getChat();
-    $("#selected_chat_pole").val(file_name);
-    $("#create_button").click();
-    $("#shadow_select_chat_popup").css("display", "none");
-    $("#load_select_chat_div").css("display", "block");
-}
-
 /* function openNavToggle() {
     if (!$("#nav-toggle").prop("checked")) {
         $("#nav-toggle").trigger("click");
@@ -2360,7 +2303,7 @@ async function getAllCharaChats() {
                 a["file_name"].localeCompare(b["file_name"])
             );
             data = data.reverse();
-            $("#ChatHistoryCharName").html(characters[this_chid].name);
+
             for (const key in data) {
                 let strlen = 300;
                 let mes = data[key]["mes"];
@@ -2369,18 +2312,15 @@ async function getAllCharaChats() {
                         mes = "..." + mes.substring(mes.length - strlen);
                     }
                     $("#select_chat_div").append(
-                        '<div class="select_chat_block_wrapper">' +
-                        '<div class="select_chat_block" file_name="' + data[key]["file_name"] + '">' +
-                        '<div class=avatar><img src="characters/' + characters[this_chid]["avatar"] + '""></div >' +
-                        '<div class="select_chat_block_filename">' + data[key]["file_name"] + '</div>' +
-                        '<div class="select_chat_block_mes">' +
+                        '<div class="select_chat_block" file_name="' +
+                        data[key]["file_name"] +
+                        '"><div class=avatar><img src="characters/' +
+                        characters[this_chid]["avatar"] +
+                        '""></div><div class="select_chat_block_filename">' +
+                        data[key]["file_name"] +
+                        '</div><div class="select_chat_block_mes">' +
                         mes +
-                        "</div>" +
-                        "</div >" +
-                        '<div file_name="' + data[key]["file_name"] + '" class="PastChat_cross"></div>' +
-                        '</div>'
-
-
+                        "</div></div>"
                     );
                     if (
                         characters[this_chid]["chat"] ==
@@ -2388,7 +2328,7 @@ async function getAllCharaChats() {
                     ) {
                         //children().last()
                         $("#select_chat_div")
-                            .find(".select_chat_block:last")
+                            .children(":nth-last-child(1)")
                             .attr("highlight", true);
                     }
                 }
@@ -2546,7 +2486,7 @@ function select_selected_character(chid) {
     //$("#avatar_div").css("display", "none");
     var this_avatar = default_avatar;
     if (characters[chid].avatar != "none") {
-        this_avatar = "/thumbnail?type=avatar&file=" + encodeURIComponent(characters[chid].avatar);
+        this_avatar = "characters/" + characters[chid].avatar;
     }
     $("#avatar_load_preview").attr("src", this_avatar + "#" + Date.now());
     $("#name_div").css("display", "none");
@@ -2637,7 +2577,6 @@ function callPopup(text, type) {
             break;
         case "del_world":
         case "del_group":
-        case "del_chat":
         default:
             $("#dialogue_popup_ok").text("Delete");
     }
@@ -2698,7 +2637,7 @@ function read_bg_load(input) {
                         "url(" + e.target.result + ")"
                     );
                     $("#form_bg_download").after(
-                        `<div class=bg_example bgfile="${html}" style="background-image: url('/thumbnail?type=bg&file=${encodeURIComponent(html)}');">
+                        `<div class=bg_example bgfile="${html}" style="background-image: url('/thumbnail?type=bg&file=${html}');">
                             <img class=bg_example_cross src="img/cross.png">
                         </div>`
                     );
@@ -2843,20 +2782,13 @@ $(document).ready(function () {
                 easing: animation_rm_easing,
                 queue: false,
                 complete: function () {
-                    /*if (!selected_group) {
-                        var typingIndicator = $("#typing_indicator_template .typing_indicator").clone();
-                        typingIndicator.find(".typing_indicator_name").text(characters[this_chid].name);
-                    } */
-                    /* $("#chat").append(typingIndicator); */
+
                     const is_animation_scroll = ($('#chat').scrollTop() >= ($('#chat').prop("scrollHeight") - $('#chat').outerHeight()) - 10);
                     //console.log(parseInt(chat[chat.length-1]['swipe_id']));
                     //console.log(chat[chat.length-1]['swipes'].length);
                     if (run_generate && parseInt(chat[chat.length - 1]['swipe_id']) === chat[chat.length - 1]['swipes'].length) {
                         //console.log('showing ""..."');
-                        /* if (!selected_group) {
-                        } else { */
                         $("#chat").children().filter('[mesid="' + (count_view_mes - 1) + '"]').children('.mes_block').children('.mes_text').html('...');  //shows "..." while generating
-                        /* } */
                     } else {
                         //console.log('showing previously generated swipe candidate, or "..."');
                         //console.log('onclick right swipe calling addOneMessage');
@@ -3235,14 +3167,6 @@ $(document).ready(function () {
         popup_type = "del_bg";
         callPopup("<h3>Delete the background?</h3>");
     });
-
-    $(document).on("click", ".PastChat_cross", function () {
-        chat_file_for_del = $(this).attr('file_name');
-        console.log('detected cross click for' + chat_file_for_del);
-        popup_type = "del_chat";
-        callPopup("<h3>Delete the Chat File?</h3>");
-    });
-
     $("#advanced_div").click(function () {
         if (!is_advanced_char_open) {
             is_advanced_char_open = true;
@@ -3272,11 +3196,6 @@ $(document).ready(function () {
         if (popup_type == "del_bg") {
             delBackground(bg_file_for_del.attr("bgfile"));
             bg_file_for_del.parent().remove();
-        }
-        if (popup_type == "del_chat") {
-
-            delChat(chat_file_for_del);
-
         }
         if (popup_type == "del_ch") {
             console.log(
@@ -3624,13 +3543,12 @@ $(document).ready(function () {
             $("#options").css("display") === "none" &&
             $("#options").css("opacity") == 0.0
         ) {
-            showBookmarksButtons();
             $("#options").css("display", "block");
             $("#options").transition({
                 opacity: 1.0, // the manual setting of CSS via JS is what allows the click-away feature to work
                 duration: 100,
                 easing: animation_rm_easing,
-                complete: function () { optionsPopper.update(); },
+                complete: function () { },
             });
         }
     });
@@ -3643,7 +3561,7 @@ $(document).ready(function () {
         if (id == "option_select_chat") {
             if (selected_group) {
                 // will open a chat selection screen
-                /* openNavToggle(); */
+                openNavToggle();
                 $("#rm_button_characters").trigger("click");
                 return;
             }
@@ -3662,7 +3580,7 @@ $(document).ready(function () {
         else if (id == "option_start_new_chat") {
             if (selected_group) {
                 // will open a group creation screen
-                /* openNavToggle(); */
+                openNavToggle();
                 $("#rm_button_group_chats").trigger("click");
                 return;
             }
@@ -3925,8 +3843,34 @@ $(document).ready(function () {
             }
             $(this).parent().parent().children(".mes_text").empty();
             $(this).css("display", "none");
-            $(this).parent().children(".mes_edit_done").css("display", "inline-block");
-            $(this).parent().children(".mes_edit_cancel").css("display", "inline-block");
+            $(this)
+                .parent()
+                .children(".mes_edit_done")
+                .css("display", "inline-block");
+            $(this).parent().children(".mes_edit_done").css("opacity", 0.0);
+            $(this)
+                .parent()
+                .children(".mes_edit_cancel")
+                .css("display", "inline-block");
+            $(this).parent().children(".mes_edit_cancel").css("opacity", 0.0);
+            $(this)
+                .parent()
+                .children(".mes_edit_done")
+                .transition({
+                    opacity: 1.0,
+                    duration: 600,
+                    easing: "",
+                    complete: function () { },
+                });
+            $(this)
+                .parent()
+                .children(".mes_edit_cancel")
+                .transition({
+                    opacity: 1.0,
+                    duration: 600,
+                    easing: "",
+                    complete: function () { },
+                });
             var edit_mes_id = $(this).parent().parent().parent().attr("mesid");
             this_edit_mes_id = edit_mes_id;
 
@@ -3953,10 +3897,17 @@ $(document).ready(function () {
                 .parent()
                 .children(".mes_text")
                 .children(".edit_textarea");
+            edit_textarea.css("opacity", 0.0);
+            edit_textarea.transition({
+                opacity: 1.0,
+                duration: 0,
+                easing: "",
+                complete: function () { },
+            });
             edit_textarea.height(0);
             edit_textarea.height(edit_textarea[0].scrollHeight);
             edit_textarea.focus();
-            edit_textarea[0].setSelectionRange(     //this sets the cursor at the end of the text
+            edit_textarea[0].setSelectionRange(
                 edit_textarea.val().length,
                 edit_textarea.val().length
             );
@@ -4142,8 +4093,27 @@ $(document).ready(function () {
     });
 
     $(document).on("click", ".select_chat_block, .bookmark_link", async function () {
+        let originalChat = characters[this_chid]["chat"];
         let file_name = $(this).attr("file_name").replace(".jsonl", "");
-        openCharacterChat(file_name);
+        //console.log(characters[this_chid]['chat']);
+        characters[this_chid]["chat"] = file_name;
+        clearChat();
+        chat.length = 0;
+        await getChat();
+        $("#selected_chat_pole").val(file_name);
+        $("#create_button").click();
+        $("#shadow_select_chat_popup").css("display", "none");
+        $("#load_select_chat_div").css("display", "block");
+
+        // create "return back" message
+        /*if ($(this).hasClass('bookmark_link')) {
+            const existingMessageIndex = chat.findIndex(x => x.extras?.type === system_message_types.BOOKMARK_BACK);
+
+            if (existingMessageIndex === -1) {
+                const messageText = stringFormat(system_messages[system_message_types.BOOKMARK_BACK].mes, originalChat);
+                sendSystemMessage(system_message_types.BOOKMARK_BACK, messageText);
+            }
+        }*/
     });
 
     $('.drawer-toggle').click(function () {
@@ -4188,11 +4158,5 @@ $(document).ready(function () {
             }
 
         }
-    });
-
-    $(document).on('click', '.inline-drawer-toggle', function () {
-        var icon = $(this).find('.inline-drawer-icon');
-        icon.toggleClass('down up');
-        $(this).closest('.inline-drawer').find('.inline-drawer-content').slideToggle();
     });
 })
