@@ -2,8 +2,6 @@ import { getContext } from "../../extensions.js";
 export { MODULE_NAME };
 
 const MODULE_NAME = '2_floating_prompt'; // <= Deliberate, for sorting lower than memory
-const PROMPT_KEY = 'extensions_floating_prompt';
-const INTERVAL_KEY = 'extensions_floating_interval';
 const UPDATE_INTERVAL = 1000;
 
 let lastMessageNumber = null;
@@ -18,30 +16,51 @@ function onExtensionFloatingIntervalInput() {
     saveSettings();
 }
 
+function getLocalStorageKeys() {
+    const context = getContext();
+    const keySuffix = context.groupId ? context.groupId : `${context.characters[context.characterId].name}_${context.chatId}`;
+    return { prompt: `extensions_floating_prompt_${keySuffix}`, interval: `extensions_floating_interval_${keySuffix}` };
+}
+
 function loadSettings() {
-    const prompt = localStorage.getItem(PROMPT_KEY);
-    const interval = localStorage.getItem(INTERVAL_KEY);
+    const keys = getLocalStorageKeys();
+    const prompt = localStorage.getItem(keys.prompt) ?? '';
+    const interval = localStorage.getItem(keys.interval) ?? 0;
     $('#extension_floating_prompt').val(prompt).trigger('input');
     $('#extension_floating_interval').val(interval).trigger('input');
 }
 
 function saveSettings() {
-    localStorage.setItem(PROMPT_KEY, $('#extension_floating_prompt').val());
-    localStorage.setItem(INTERVAL_KEY, $('#extension_floating_interval').val());
+    const keys = getLocalStorageKeys();
+    localStorage.setItem(keys.prompt, $('#extension_floating_prompt').val());
+    localStorage.setItem(keys.interval, $('#extension_floating_interval').val());
 }
 
 async function moduleWorker() {
     const context = getContext();
 
+    if (!context.groupId && !context.characterId) {
+        return;
+    }
+
+    loadSettings();
+
     // take the count of messages
     lastMessageNumber = Array.isArray(context.chat) && context.chat.length ? context.chat.filter(m => m.is_user).length : 0;
+
+    // special case for new chat
+    if (Array.isArray(context.chat) && context.chat.length === 1) {
+        lastMessageNumber = 1;
+    }
 
     if (lastMessageNumber <= 0 || promptInsertionInterval <= 0) {
         $('#extension_floating_counter').text('No');
         return;
     }
 
-    const messagesTillInsertion = (lastMessageNumber % promptInsertionInterval);
+    const messagesTillInsertion = lastMessageNumber >= promptInsertionInterval
+        ? (lastMessageNumber % promptInsertionInterval)
+        : (promptInsertionInterval - lastMessageNumber);
     const shouldAddPrompt = messagesTillInsertion == 0;
     const prompt = shouldAddPrompt ? $('#extension_floating_prompt').val() : '';
     context.setExtensionPrompt(MODULE_NAME, prompt);
@@ -67,6 +86,5 @@ async function moduleWorker() {
     }
 
     addExtensionsSettings();
-    loadSettings();
     setInterval(moduleWorker, UPDATE_INTERVAL);
 })();

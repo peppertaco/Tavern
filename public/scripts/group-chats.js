@@ -32,6 +32,7 @@ import {
     selectRightMenuWithAnimation,
     setRightTabSelectedClass,
     default_ch_mes,
+    deleteLastMessage,
 } from "../script.js";
 
 export {
@@ -45,6 +46,7 @@ export {
     getGroupAvatar,
     getGroups,
     printGroups,
+    regenerateGroup,
     resetSelectedGroup,
     select_group_chats,
 }
@@ -70,6 +72,20 @@ async function _save(group) {
 
 
 // Group chats
+async function regenerateGroup() {
+    while (chat.length > 0) {
+        const lastMes = chat[chat.length - 1];
+
+        if (lastMes.is_user || lastMes.is_system) {
+            break;
+        }
+
+        deleteLastMessage();
+    }
+
+    generateGroupWrapper();
+}
+
 async function getGroupChat(id) {
     const response = await fetch("/getgroupchat", {
         method: "POST",
@@ -83,6 +99,7 @@ async function getGroupChat(id) {
     if (response.ok) {
         const data = await response.json();
         if (Array.isArray(data) && data.length) {
+            data[0].is_group = true;
             for (let key of data) {
                 chat.push(key);
             }
@@ -161,7 +178,7 @@ function printGroups() {
     for (let group of groups) {
         const template = $("#group_list_template .group_select").clone();
         template.data("id", group.id);
-        template.find(".ch_name").html(group.name);
+        template.find(".ch_name").text(group.name);
         $("#rm_print_characters_block").prepend(template);
         updateGroupAvatar(group);
     }
@@ -231,11 +248,15 @@ function getGroupAvatar(group) {
 }
 
 
-async function generateGroupWrapper(by_auto_mode) {
+async function generateGroupWrapper(by_auto_mode, type=null) {
     if (online_status === "no_connection") {
         is_group_generating = false;
         setSendButtonState(false);
         return;
+    }
+
+    if (is_group_generating) {
+        return false;
     }
 
     const group = groups.find((x) => x.id === selected_group);
@@ -261,40 +282,49 @@ async function generateGroupWrapper(by_auto_mode) {
             $("#chat").append(typingIndicator);
         }
 
+        const lastMessage = chat[chat.length - 1];
         let messagesBefore = chat.length;
+        let lastMessageText = lastMessage.mes;
         let activationText = "";
         if (userInput && userInput.length && !by_auto_mode) {
             activationText = userInput;
             messagesBefore++;
         } else {
-            const lastMessage = chat[chat.length - 1];
             if (lastMessage && !lastMessage.is_system) {
                 activationText = lastMessage.mes;
             }
         }
 
-        const activatedMembers = activateMembers(group.members, activationText);
+        const activatedMembers = type !== "swipe" ? activateMembers(group.members, activationText) : activateSwipe(group.members);
         // now the real generation begins: cycle through every character
         for (const chId of activatedMembers) {
+            const generateType = type !== "swipe" ? "group_chat" : "swipe";
             setCharacterId(chId);
             setCharacterName(characters[chId].name)
 
-            await Generate("group_chat", by_auto_mode);
+            await Generate(generateType, by_auto_mode);
 
-            // update indicator and scroll down
-            typingIndicator
-                .find(".typing_indicator_name")
-                .text(characters[chId].name);
-            $("#chat").append(typingIndicator);
-            typingIndicator.show(250, function () {
-                typingIndicator.get(0).scrollIntoView({ behavior: "smooth" });
-            });
+            if (type !== "swipe") {
+                // update indicator and scroll down
+                typingIndicator
+                    .find(".typing_indicator_name")
+                    .text(characters[chId].name);
+                $("#chat").append(typingIndicator);
+                typingIndicator.show(250, function () {
+                    typingIndicator.get(0).scrollIntoView({ behavior: "smooth" });
+                });
+            }
 
             while (true) {
-                // check if message generated already
-                if (chat.length == messagesBefore) {
-                    await delay(10);
-                } else {
+                // if not swipe - check if message generated already
+                if (type !== "swipe" && chat.length == messagesBefore) {
+                    await delay(100);
+                }
+                // if swipe - see if message changed
+                else if (type === "swipe" && lastMessageText === chat[chat.length - 1].mes) {
+                    await delay(100);
+                } 
+                else {
                     messagesBefore++;
                     break;
                 }
@@ -308,7 +338,17 @@ async function generateGroupWrapper(by_auto_mode) {
         is_group_generating = false;
         setSendButtonState(false);
         setCharacterId(undefined);
+        setCharacterName('');
     }
+}
+
+function activateSwipe(members) {
+    const name = chat[chat.length -1].name;
+    const activatedNames = members.includes(name) ? [name] : [];
+    const memberIds = activatedNames
+        .map((x) => characters.findIndex((y) => y.name === x))
+        .filter((x) => x !== -1);
+    return memberIds;
 }
 
 function activateMembers(members, input) {
@@ -397,6 +437,9 @@ async function deleteGroup(id) {
         $("#rm_info_block").transition({ opacity: 0, duration: 0 });
         select_rm_info("Group deleted!");
         $("#rm_info_block").transition({ opacity: 1.0, duration: 2000 });
+
+        $("#rm_button_selected_ch").children("h2").text('');
+        setRightTabSelectedClass();
     }
 }
 
@@ -446,7 +489,7 @@ function select_group_chats(chat_id) {
     });
     $("#rm_group_filter").val("").trigger("input");
 
-    selectRightMenuWithAnimation('rm_group_chats_block')
+    selectRightMenuWithAnimation('rm_group_chats_block');
 
     async function memberClickHandler(event) {
         event.stopPropagation();
@@ -495,7 +538,7 @@ function select_group_chats(chat_id) {
         const template = $("#group_member_template .group_member").clone();
         template.data("id", character.name);
         template.find(".avatar img").attr("src", avatar);
-        template.find(".ch_name").html(character.name);
+        template.find(".ch_name").text(character.name);
         template.click(memberClickHandler);
 
         if (
@@ -527,14 +570,19 @@ function select_group_chats(chat_id) {
 
     $("#rm_group_delete").off();
     $("#rm_group_delete").on("click", function () {
+        if (is_group_generating) {
+            callPopup('<h3>Not so fast! Wait for the characters to stop typing before deleting the group.</h3>', 'text');
+            return;
+        }
+
         $("#dialogue_popup").data("group_id", chat_id);
         callPopup("<h3>Delete the group?</h3>", "del_group");
     });
 
     // top bar
     if (group) {
-        $("#rm_button_selected_ch").children("h2").text("");
-        setRightTabSelectedClass();
+        $("#rm_button_selected_ch").children("h2").text(groupName);
+        setRightTabSelectedClass('rm_button_selected_ch');
     }
 }
 
