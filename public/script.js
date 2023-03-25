@@ -154,8 +154,8 @@ let active_character;
 let backgrounds = [];
 const default_avatar = "img/ai4.png";
 const system_avatar = "img/five.png";
-let is_colab = false;
-let is_checked_colab = false;
+let is_colab = true;
+let is_checked_colab = true;
 let is_mes_reload_avatar = false;
 let optionsPopper = Popper.createPopper(document.getElementById('options_button'), document.getElementById('options'), {
     modifiers: [
