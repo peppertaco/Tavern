@@ -95,7 +95,7 @@ const directories = {
     worlds: 'public/worlds/',
     avatars: 'public/User Avatars',
     groups: 'public/groups/',
-    groupChats: 'public/group chats',
+    groupChats: 'public/group chats/',
     chats: 'public/chats/',
     characters: 'public/characters/',
     backgrounds: 'public/backgrounds',
