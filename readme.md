@@ -1,37 +1,51 @@
-## RossAscends mods ported into SillyLossy's TavernAI 1.2.8
+## Silly TavernAI mod. Based on fork of TavernAI 1.2.8
+### Brought to you by @SillyLossy and @RossAscends
 
+Try on Colab (runs KoboldAI backend and TavernAI Extras server alongside):  <a target="_blank" href="https://colab.research.google.com/github/SillyLossy/TavernAI-extras/blob/main/colab/GPU.ipynb">
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+</a>
 
-<img width="400" alt="image" src="https://user-images.githubusercontent.com/18619528/224549531-ab30db22-fe33-49c5-81a8-945c543a1e05.png">
+https://colab.research.google.com/github/SillyLossy/TavernAI-extras/blob/main/colab/GPU.ipynb
 
 ## This branch includes: 
-* Base TavernAI 1.2.8
-* SillyLossy's extensive 1.2.8 modifications and functions
-   * World Info
-   * OobaBooga's TextGen WebUI API connection
-   * Soft prompts
-   * installing [SillyLossy's TAI-extras](https://github.com/SillyLossy/TavernAI-extras) will give support for
-     * Character emotional expressions
-     * Auto-Summary of the chat history
-     * sending images to chat, and the AI interpreting the content.
-   
+* A heavily modified TavernAI 1.2.8 (more than 50% of code rewritten or optimized)
+* Swipes
+* Group chats
+* Chat bookmarks (duplicates the current in its curent state)
+* Advanced KoboldAI generation settings
+* World Info support
+* [Oobabooga's TextGen WebUI](https://github.com/oobabooga/text-generation-webui) API connection
+* Soft prompts selector for KoboldAI
+* Prompt generation formatting tweaking
+* Extensibility support via [SillyLossy's TAI-extras](https://github.com/SillyLossy/TavernAI-extras) plugins
+    * Character emotional expressions
+    * Auto-Summary of the chat history
+    * Sending images to chat, and the AI interpreting the content.
+
+## UI Extensions 🚀
+| Name             | Description                      | Required <a href="https://github.com/SillyLossy/TavernAI-extras#modules" target="_blank">Extra Modules</a> | Screenshot |
+| ---------------- | ---------------------------------| ---------------------------- | ---------- |
+| Image Captioning | Send a cute picture to your bot!<br><br>Picture select option will appear beside "Message send" button. | `caption`                    | <img src="https://user-images.githubusercontent.com/18619528/224161576-ddfc51cd-995e-44ec-bf2d-d2477d603f0c.png" style="max-width:200px" />  |
+| Character Expressions | See your character reacting to your messages!<br><br>**You need to provide your own character images!**<br><br>1. Create a folder in TavernAI called `public/characters/<name>`, where `<name>` is a name of your character.<br>2. For base emotion classification model, put six PNG files there with the following names: `joy.png`, `anger.png`, `fear.png`, `love.png`, `sadness.png`, `surprise.png`. Other models may provide another options.<br>3. Images only display in desktop mode. | `classify` | <img style="max-width:200px" alt="image" src="https://user-images.githubusercontent.com/18619528/223765089-34968217-6862-47e0-85da-7357370f8de6.png"> |
+| Memory | Chatbot long-term memory simulation using automatic message context summarization. | `summarize` |  <img style="max-width:200px" alt="image" src="https://user-images.githubusercontent.com/18619528/223766279-88a46481-1fa6-40c5-9724-6cdd6f587233.png"> |
+| Floating Prompt | Adds a string to your scenario after certain amount of messages you send. Usage ideas: reinforce certain events during roleplay. Thanks @Ali឵#2222 for suggesting me that! | None | <img style="max-width:200px" src="https://user-images.githubusercontent.com/18619528/224158641-c317313c-b87d-42b2-9702-ea4ba896593e.png" /> | 
+| D&D Dice | A set of 7 classic D&D dice for all your dice rolling needs.<br><br>*I used to roll the dice.<br>Feel the fear in my enemies' eyes* | None | <img style="max-width:200px" alt="image" src="https://user-images.githubusercontent.com/18619528/226199925-a066c6fc-745e-4a2b-9203-1cbffa481b14.png"> |
 
 ...and...
 
 ## UI/CSS/Quality of Life tweaks by RossAscends
-
-*Many of these were incorporated in SillyLossy's TAI branch already, but I updated them and split the Javascript into a separate file for this release.*
 
 * Mobile-friendly page design
 * HotKeys
   * Ctrl+Up = Connect to API 
   * Ctrl+Left = view locally stored variables (in the browser console window)
   * Ctrl+Right = clear locally stored variables.
-  * Ctrl+enter = Regenerate last AI response.
+  * Ctrl+Enter = Regenerate last AI response.
 
 * User Name Changes and Character Deletion no longer force the page to refresh.
 
-* Toggle option to automatically connect to API on page load (currently only for Kobold)
-* Toggle option to automatically load the most recently viewed character on page load
+* Toggle option to automatically connect to API on page load.
+* Toggle option to automatically load the most recently viewed character on page load.
 * Better Token Counter - works on unsaved characters, and shows both permanent and temporary tokens.
 
 * Better Past Chats View
@@ -42,7 +56,7 @@
 * Clicking the Lock on the nav panel will hold the panel open, and this setting be remembered across sessions.
 * Nav panel status of open or closed will also be saved across sessions.
 
-* Supports saving a shortcut to iOS homescreens and opening in fullscreen mode from that bookmark.
+* mobile UI optimized for iOS, and supports saving a shortcut to iOS homescreen and opening in fullscreen mode.
 
 ## Installation
 
@@ -78,9 +92,16 @@ To connect over wifi you'll need your PC's local wifi IP address
 if you want other people on the internet to connect, and check [here](https://whatismyipaddress.com/) for 'IPv4'
 
 ## Questions or suggestions?
-Contact me on Discord: RossAscends#1779
+Contact us on Discord: Cohee#1207 or RossAscends#1779
 
-## License
-* TAI Base: Unknown
+## Screenshots
+<img width="400" alt="image" src="https://user-images.githubusercontent.com/18619528/226418738-f75a9f46-cc6a-499d-9e27-0c06bf8efe02.png">
+<img width="400" alt="image" src="https://user-images.githubusercontent.com/18619528/226420134-171022a3-f799-4ea2-951f-a734a293579b.png">
+
+
+## License and credits
+* TAI Base by Humi: Unknown license
 * SillyLossy's TAI mod: Public domain
 * RossAscends' additions: Public domain
+* Portions of CncAnon's TavernAITurbo mod: Unknown license
+* Thanks oobabooga for compiling presets for TextGen
