@@ -97,4 +97,9 @@ $(document).ready(() => {
         custom_chat_separator = $(this).val();
         localStorage.setItem(storage_keys.custom_chat_separator, custom_chat_separator);
     });
+
+    $("#hide-chat-checkbox").change(function () {
+      var sheld = document.getElementById("sheld");
+      sheld.style.display = this.checked ? "none" : "grid";
+    });	
 });
