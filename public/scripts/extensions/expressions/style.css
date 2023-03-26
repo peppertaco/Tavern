@@ -7,7 +7,7 @@
 .expression-holder {
     max-height: 90vh;
     max-width: 100vw;
-	height: 500%;
+    height: 500%;
     width: 500%;
     position: fixed;
     left: 50%;
@@ -19,6 +19,7 @@
     text-align: center;
     filter: drop-shadow(2px 2px 2px #51515199);
     transition: 500ms;
+    z-index: 1;
 }
 
 img.expression {
