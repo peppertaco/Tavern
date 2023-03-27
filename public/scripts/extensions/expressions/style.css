@@ -13,7 +13,7 @@
     left: 50%;
     bottom: 0;
     transform: translateX(-50%);
-    bottom: 0;
+    top: -10svh;
     padding-left: 10px;
     padding-right: 10px;
     text-align: center;
