@@ -159,8 +159,8 @@ let active_character;
 let backgrounds = [];
 const default_avatar = "img/ai4.png";
 const system_avatar = "img/five.png";
-let is_colab = true;
-let is_checked_colab = true;
+let is_colab = false;
+let is_checked_colab = false;
 let is_mes_reload_avatar = false;
 let optionsPopper = Popper.createPopper(document.getElementById('options_button'), document.getElementById('options'), {
     modifiers: [
@@ -828,9 +828,9 @@ function addOneMessage(mes, type = "normal", insertAfter = null) {
             avatarImg = system_avatar;
         } else {
             if (characters[this_chid].avatar != "none") {
-                avatarImg = "characters/" + characters[this_chid].avatar;
+                avatarImg = `/thumbnail?type=avatar&file=${encodeURIComponent(characters[this_chid].avatar)}`;
                 if (is_mes_reload_avatar !== false) {
-                    avatarImg += "#" + is_mes_reload_avatar;
+                    avatarImg += "&" + is_mes_reload_avatar;
                 }
             } else {
                 avatarImg = default_avatar;
@@ -2598,9 +2598,9 @@ function select_selected_character(chid) {
     //$("#avatar_div").css("display", "none");
     var this_avatar = default_avatar;
     if (characters[chid].avatar != "none") {
-        this_avatar = "characters/" + characters[chid].avatar;
+        this_avatar = "/thumbnail?type=avatar&file=" + encodeURIComponent(characters[chid].avatar);
     }
-    $("#avatar_load_preview").attr("src", this_avatar + "#" + Date.now());
+    $("#avatar_load_preview").attr("src", this_avatar + "&" + Date.now());
     $("#name_div").css("display", "none");
 
     $("#form_create").attr("actiontype", "editcharacter");
