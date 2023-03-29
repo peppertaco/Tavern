@@ -215,34 +215,6 @@ app.get("/notes/*", function (request, response) {
     response.sendFile(__dirname + "/public" + request.url + ".html");
     //response.send("<h1>Главная страница</h1>");
 });
-app.post("/getlastversion", jsonParser, function (request, response_getlastversion = response) {
-    if (!request.body) return response_getlastversion.sendStatus(400);
-
-    const repo = 'SillyLossy/TavernAI';
-    let req;
-    req = https.request({
-        hostname: 'github.com',
-        path: `/${repo}/releases/latest`,
-        method: 'HEAD'
-    }, (res) => {
-        if (res.statusCode === 302) {
-            const glocation = res.headers.location;
-            const versionStartIndex = glocation.lastIndexOf('/tag/') + 5;
-            const version = glocation.substring(versionStartIndex);
-            //console.log(version);
-            response_getlastversion.send({ version: version });
-        } else {
-            response_getlastversion.send({ version: 'error' });
-        }
-    });
-
-    req.on('error', (error) => {
-        console.error(error);
-        response_getlastversion.send({ version: 'error' });
-    });
-
-    req.end();
-});
 
 //**************Kobold api
 app.post("/generate", jsonParser, async function (request, response_generate = response) {
@@ -1553,7 +1525,13 @@ app.post('/creategroup', jsonParser, (request, response) => {
     }
 
     const id = Date.now();
-    const chatMetadata = { id: id, name: request.body.name ?? 'New Group', members: request.body.members ?? [], avatar_url: request.body.avatar_url };
+    const chatMetadata = {
+        id: id,
+        name: request.body.name ?? 'New Group',
+        members: request.body.members ?? [],
+        avatar_url: request.body.avatar_url,
+        allow_self_responses: !!request.body.allow_self_responses,
+    };
     const pathToFile = path.join(directories.groups, `${id}.json`);
     const fileData = JSON.stringify(chatMetadata);
 
