@@ -154,50 +154,80 @@ $(document).ready(() => {
         applyAvatarStyle();
     });
 	
-$("#hide-chat-checkbox").change(function () {
-  var sheld = document.getElementById("sheld");
-  sheld.style.display = this.checked ? "none" : "grid";
-});
-
-function updateStyle() {
-  if ($("#ui1-style-checkbox:checked").length > 0) {
-    $(".expression-holder").css("max-width", "100%");  
+    $("#hide-chat-checkbox").change(function () {
+      var sheld = document.getElementById("sheld");
+      sheld.style.display = this.checked ? "none" : "grid";
+    });			
+	
+$("#ui1-style-checkbox").change(function () {
+  if (this.checked) {
+	$(".expression-holder").css("max-width", "100%");  
     $(".expression-holder").css("left", "-20%");
-    $(".expression-holder").css("height", "100%"); 		
-    $("img.expression").css("max-width", "100%");  
-    $("img.expression").css("height", "200%"); 
+	$(".expression-holder").css("height", "100%"); 		
+	$("img.expression").css("max-width", "100%");  
+	$("img.expression").css("height", "200%"); 
     $("#sheld").css("left", "50%");
-    $("#sheld").css("max-width", "40%");
+	$("#sheld").css("max-width", "40%");
   } else {
     $(".expression-holder").css("left", "auto");
-    $(".expression-holder").css("max-width", "calc((100vw - 800px)/2)");
-    $(".expression-holder").css("height", "auto"); 		
+	$(".expression-holder").css("max-width", "calc((100vw - 800px)/2)");
+	$(".expression-holder").css("height", "auto"); 		
     $("#sheld").css("left", "0");
-    $("#sheld").css("max-width", "50%");
-    $("img.expression").css("max-width", "100%");  
-    $("img.expression").css("height", "none"); 	
+	$("#sheld").css("max-width", "50%");
+	$("img.expression").css("max-width", "100%");  
+	$("img.expression").css("height", "none"); 	
   }
-  
-  if ($("#ui2-style-checkbox:checked").length > 0) {
+});	
+	
+$("#ui2-style-checkbox").change(function () {
+  if (this.checked) {
     $(".expression-holder").css("left", "auto");
-    $(".expression-holder").css("max-width", "100%"); 
-    $(".expression-holder").css("height", "100%"); 	
-    $("img.expression").css("max-width", "100%");  
-    $("img.expression").css("height", "200%"); 
+	$(".expression-holder").css("max-width", "100%"); 
+	$(".expression-holder").css("height", "100%"); 	
+	$("img.expression").css("max-width", "100%");  
+	$("img.expression").css("height", "200%"); 
     $("#sheld").css("height", "calc(100svh - 65svh)");
-    $("#sheld").css("max-width", "80%");
-    $("#sheld").css("top", "65%");
+	$("#sheld").css("max-width", "80%");
+	$("#sheld").css("top", "65%");
+	
   } else {
     $(".expression-holder").css("left", "0");
-    $(".expression-holder").css("max-width", "calc((100vw - 800px)/2)");
-    $(".expression-holder").css("height", "auto"); 			
+	$(".expression-holder").css("max-width", "calc((100vw - 800px)/2)");
+	$(".expression-holder").css("height", "auto"); 			
     $("#sheld").css("height", "calc(100svh - 40px)");
-    $("#sheld").css("max-width", "50%");
-    $("#sheld").css("top", "35px");
-    $("#sheld").css("bottom", "0");
-    $("img.expression").css("max-width", "100%");  
-    $("img.expression").css("height", "none"); 	
+	$("#sheld").css("max-width", "50%");
+	$("#sheld").css("top", "35px");
+	$("#sheld").css("bottom", "0");
+	$("img.expression").css("max-width", "100%");  
+	$("img.expression").css("height", "none"); 	
   }
-  
+});
+
+$("#ui3-style-checkbox").change(function () {
+  if (this.checked) {
+    $(".expression-holder").css("left", "auto");
+	$(".expression-holder").css("max-width", "100%"); 
+	$(".expression-holder").css("height", "100%"); 	
+	$(".expression-holder").css("max-height", "100%"); 	
+	$(".expression-holder").css("top", "10%"); 		
+	$("img.expression").css("max-width", "100%");  
+	$("img.expression").css("height", "100%"); 
+	$("img.expression").css("object-fit", "cover"); 	
+    $("#sheld").css("height", "calc(100svh - 60svh)");
+	$("#sheld").css("max-width", "100%");
+	$("#sheld").css("top", "60%");
+	
+  } else {
+    $(".expression-holder").css("left", "0");
+	$(".expression-holder").css("max-width", "calc((100vw - 800px)/2)");
+	$(".expression-holder").css("height", "auto"); 			
+    $("#sheld").css("height", "calc(100svh - 40px)");
+	$("#sheld").css("max-width", "100%");
+	$("#sheld").css("top", "35px");
+	$("#sheld").css("bottom", "0");
+	$("img.expression").css("max-width", "100%");  
+	$("img.expression").css("height", "none"); 	
+  }
+});
 
 });
