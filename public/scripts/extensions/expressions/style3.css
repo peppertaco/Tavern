@@ -6,22 +6,26 @@
 
 .expression-holder {
     max-height: 90vh;
-    max-width: calc((100vw - 800px)/2);
-    width: 100%;
+    max-width: 100vw;
+    height: 500%;
+    width: 500%;
     position: fixed;
-    left: 0;
+	left: -20%;
     bottom: 0;
     padding-left: 10px;
     padding-right: 10px;
+	justify-content: center;
+    display: flex;
     text-align: center;
-    filter: drop-shadow(2px 2px 2px #51515199);
+    filter: drop-shadow(-20px 20px 3px #51515199);
     transition: 500ms;
-    z-index: 3;
+    z-index: 1;
 }
 
 img.expression {
-    max-width: 100%;
+    max-width: 200%;
     max-height: 90vh;
+	height: 200%;
 }
 
 .debug-image {
@@ -98,8 +102,17 @@ img.expression {
     margin-left: 0px !important;
 }
 
-@media screen and (max-width:1200px) {
+@media screen and (max-width:0px) {
     div.expression {
         display: none;
     }
+}
+.checkbox_label,
+.checkbox_label + label,
+.checkbox_label + label + label,
+.checkbox_label + label + label + label {
+    display: flex;
+    flex-direction: row;
+    column-gap: 10px;
+    align-items: center;
 }

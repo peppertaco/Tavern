@@ -205,7 +205,7 @@ function RA_checkOnlineStatus() {
         connection_made = false;
     } else {
         if (online_status !== undefined && online_status !== "no_connection") {
-            $("#send_textarea").attr("placeholder", "..."); //on connect, placeholder tells user to type message
+            $("#send_textarea").attr("placeholder", "Type a message..."); //on connect, placeholder tells user to type message
             const formColor = fast_ui_mode ? "var(--black90a)" : "var(--black60a)";
             $("#send_form").css("background-color", formColor); //on connect, form BG changes to transprent black
             $("#API-status-top").removeClass("redOverlayGlow");
@@ -412,9 +412,11 @@ $("document").ready(function () {
         if (event.ctrlKey && event.key == "ArrowLeft") {        //for debug, show all local stored vars
             CheckLocal();
         }
+        /*
         if (event.ctrlKey && event.key == "ArrowRight") {        //for debug, empty local storage state
             ClearLocal();
         }
+        */
         if (event.key == "ArrowLeft") {        //swipes left
             if (
                 $(".swipe_left:last").css('display') === 'flex' &&
