@@ -12,6 +12,7 @@
 
     --white30a: rgba(255, 255, 255, 0.3);
     --white50a: rgba(255, 255, 255, 0.5);
+    --white60a: rgba(255, 255, 255, 0.6);
     --white70a: rgba(255, 255, 255, 0.7);
     --white100: rgba(255, 255, 255, 1);
 
@@ -30,7 +31,7 @@
     --sienna: rgb(210, 100, 40);
     --orangered: rgb(255, 90, 0);
     --greyCAIbg: rgb(36, 36, 37);
-    --ivory: rgb(230, 230, 220);
+    --ivory: rgb(220, 220, 210);
 }
 
 * {
@@ -120,6 +121,7 @@ body {
     font-weight: bold;
     color: rgb(229, 224, 216);
 }
+
 code {
     padding: 5px;
     font-family: Consolas, monospace;
@@ -130,6 +132,7 @@ code {
     border-radius: 5px;
     background-color: var(--black70a);
     display: inline-block;
+    max-width: 80%;
 }
 
 #bg1 {
@@ -179,15 +182,15 @@ code {
 #sheld {
     display: grid;
     grid-template-rows: auto min-content;
-    height: 35vh;
+    height: calc(100svh - 40px);
     overflow-x: hidden;
-    max-width: 100%;
+    max-width: 800px;
     position: absolute;
     left: 0;
     right: 0;
-    top: 65%;
+    top: 35px;
     margin: 0 auto;
-    z-index: 2;
+    z-index: 5;
 
 }
 
@@ -312,7 +315,6 @@ margin-top:5px;
 .options-content {
     overflow: hidden;
     display: block;
-    position: absolute;
     background-color: var(--black100);
     border: 1px solid #666;
     border-radius: 15px;
@@ -320,7 +322,7 @@ margin-top:5px;
     text-shadow: 0 0 3px black;
     min-width: 200px;
     z-index: 2000;
-    margin-bottom: 13px;
+    margin-bottom: 3px;
 }
 
 .options-content hr {
@@ -411,6 +413,32 @@ margin-top:5px;
     align-items: flex-end;
 }
 
+.ui-settings {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    column-gap: 10px;
+}
+
+.ui-settings > div {
+    flex: 1;
+}
+
+.ui-settings label {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.ui-settings input[type="checkbox"] {
+  vertical-align: middle;
+  margin-right: 10px;
+}
+
+#avatars-style .range-block-range {
+    display: flex;
+    flex-direction: column;
+}
+
 .avatar {
     width: 50px;
     height: 50px;
@@ -425,6 +453,43 @@ margin-top:5px;
     border-radius: 50%;
     border: 1px solid var(--black30a);
     box-shadow: 0 0 5px var(--black50a);
+}
+
+body.big-avatars .avatar {
+    width: 60px;
+    height: 90px;
+    border-style: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: visible;
+    border-radius: 5px;
+    box-shadow: 0 0 5px var(--black50a);
+}
+
+body.big-avatars #user_avatar_block .avatar {
+    height: 90px;
+    width: 60px;
+    border-radius: 5px;
+}
+
+body.big-avatars #user_avatar_block .avatar img {
+    height: 90px;
+    width: 60px;
+}
+
+body.big-avatars .last_mes {
+    grid-template-rows: [avatar-NameMesText-edit] 80px [swipes] auto;
+    grid-template-columns: [checkbox] fit-content(60px) [avatar-leftswipe] fit-content(60px) [name-mestext] auto [edit-rightswipe] 30px !important;
+}
+
+body.big-avatars .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    border: 1px solid var(--black30a);
+    border-radius: 10px;
 }
 
 .mes_block {
@@ -445,7 +510,7 @@ margin-top:5px;
     padding-left: 0;
     padding-top: 5px;
     padding-bottom: 5px;
-    max-width: 100%;
+    max-width: 720px;
     word-wrap: break-word;
     animation: typing 3.5s steps(40, end), blink-caret .75s step-end infinite;
 }
@@ -953,6 +1018,10 @@ input[type=search]:focus::-webkit-search-cancel-button {
     margin-bottom:10px;
 }
 
+#description_div {
+    position: relative;
+}
+
 #name_div{
     width: 100%;
 }
@@ -967,7 +1036,9 @@ input[type=search]:focus::-webkit-search-cancel-button {
     display: inline-block;
 }
 
-#first_message_div {}
+#first_message_div {
+    position: relative;
+}
 
 #advanced_div {
     /* width: 100%; */
@@ -1008,7 +1079,7 @@ input[type=search]:focus::-webkit-search-cancel-button {
 }
 
 #rm_info_avatar {
-    width: 69px;
+    width: fit-content;
     text-align: center;
     margin-left: auto;
     margin-right: auto;
@@ -1561,12 +1632,12 @@ input[type='checkbox']:not(#nav-toggle):not(#rm_button_panel_pin):checked::after
     cursor: pointer;
     width: 64px;
     height: 64px;
-    border: 2px solid rgba(255,255,255,0.7);
+    outline: 2px solid rgba(255,255,255,0.7);
     border-radius: 50%;
 }
 
 #user_avatar_block .avatar:not(.selected) {
-    border: 2px solid transparent;
+    outline: 2px solid transparent;
 }
 
 #user_avatar_block .avatar img {
@@ -2123,8 +2194,13 @@ input[type="range"]{
     flex-direction: row;
     width: 100%;
     align-items: center;
-    margin-bottom: 5px;
+    margin-bottom: 10px;
     column-gap: 10px;
+}
+
+.rm_group_settings {
+    display: flex;
+    flex-direction: column;
 }
 
 #rm_group_buttons .checkbox {
@@ -2721,10 +2797,10 @@ label[for="extensions_autoconnect"] {
     background-repeat: no-repeat;    
 }
 
-.icon-connect{
+.icon-api{
     background-image: url('img/plug-solid.svg');
 }
-.icon-connect.redOverlayGlow {
+.icon-api.redOverlayGlow {
     background-image: url('img/plug-circle-exclamation-solid.svg');
 }
 .icon-sliders{
@@ -2875,10 +2951,10 @@ filter: invert(20%) sepia(100%) saturate(2518%) hue-rotate(353deg) brightness(93
     #bg1, #bg2 {position:fixed;}
 
     #sheld, #character_popup, #world_popup {    /*margin around the sides, and a larger one on bottom to avoid iOS Home bar*/
-        max-width: 100%;
-		height: calc(100svh - 55vh);
-        width: 100%;
-		top: 60%;
+        height: calc(100svh - 55px);
+        width: calc(100vw - 10px);
+        margin: 0 auto;
+        margin-left: 5px;
         position: fixed;
     }
 
@@ -2988,12 +3064,4 @@ body.no-blur #world_popup,
 body.no-blur #dialogue_popup,
 body.no-blur #select_chat_popup {
     background-color: var(--black90a) !important;
-}
-.checkbox_label,
-.checkbox_label + label,
-.checkbox_label + label + label {
-    display: flex;
-    flex-direction: row;
-    column-gap: 10px;
-    align-items: center;
 }

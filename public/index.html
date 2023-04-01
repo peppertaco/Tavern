@@ -70,7 +70,7 @@
 
         <div id="sys-settings-button" class="drawer" style="z-index:3001;">
             <div class="drawer-toggle drawer-header">
-                <div id="API-status-top" class="drawer-icon icon-connect closedIcon" title="API Connections"></div>
+                <div id="API-status-top" class="drawer-icon icon-api closedIcon" title="API Connections"></div>
             </div>
             <div id="rm_api_block" class="drawer-content closedDrawer">
                 <div id="main-API-selector-block">
@@ -80,6 +80,7 @@
                         <option value="textgenerationwebui">Text generation web UI</option>
                         <option value="novel">NovelAI</option>
                         <option value="openai">OpenAI</option>
+                        <option value="extension">Extension</option>
                     </select>
                 </div>
                 <div id="kobold_api" style="position: relative;"> <!-- shows the kobold settings -->
@@ -164,6 +165,11 @@
                         <div class="online_status_text4">No connection...</div>
                     </div>
                 </div>
+
+                <div id="extension_api">
+                    <b>Generation is handled by the external extensions.</b>
+                </div>
+
                 <label for="auto-connect-checkbox" class="checkbox_label"><input id="auto-connect-checkbox" type="checkbox" />
                     Auto-connect to Last Server
                 </label>
@@ -188,19 +194,48 @@
                     <input id="your_name" name="your_name" class="text_pole" maxlength="35" value="" autocomplete="off"><br>
                     <input id="your_name_button" class="menu_button" type="submit" title="Click to set a new User Name (reloads page)" value="Change Name">
                 </form>
-                <div class="range-block">
-                    <div class="range-block-title">
-                        <h4>Fast UI Mode</h4>
-                    </div>
-                    <div class="range-block-range">
-                        <label for="fast_ui_mode" class="checkbox_label">
-                            <input id="fast_ui_mode" type="checkbox" />
-                            No background blur
-                        </label>
-						
-						<label for="hide-chat-checkbox"><input id="hide-chat-checkbox" type="checkbox" onchange="toggleChat()" />
+                <div class="ui-settings">
+                    <div class="range-block">
+                        <div class="range-block-title">
+                            <h4>Fast UI Mode</h4>
+                        </div>
+                        <div class="range-block-range">
+                            <label for="fast_ui_mode" class="checkbox_label">
+                                <input id="fast_ui_mode" type="checkbox" />
+                                background blur
+                            </label>
+						</div>
+						<label for="hide-chat-checkbox">
+							<input id="hide-chat-checkbox" type="checkbox" />
 							Hide chat
-						</label>				
+						</label>								
+						<label for="ui1-style-checkbox">
+							<input id="ui1-style-checkbox" type="checkbox" />
+							Waifu Style 1
+						</label>
+						<label for="ui2-style-checkbox">
+							<input id="ui2-style-checkbox" type="checkbox" />
+							Waifu Style 2
+						</label>
+						<label for="ui3-style-checkbox">
+							<input id="ui3-style-checkbox" type="checkbox" />
+							Waifu Mobile
+						</label>						
+						</div>
+                    <div id="avatars-style" class="range-block">
+                        <div class="range-block-title">
+                            <h4>Avatars Style</h4>
+                        </div>
+                        <div class="range-block-range">
+                            <label>
+                                <input name="avatar_style" type="radio" value="0" />
+                                Round
+                            </label>
+                            <label>
+                                <input name="avatar_style" type="radio" value="1" />
+                                Rectangular
+                            </label>
+						</div>
                     </div>
                 </div>
                 <div id="power-user-options-block">
@@ -213,7 +248,7 @@
 
                         <label for="swipes-checkbox"><input id="swipes-checkbox" type="checkbox" />
                             Swipes
-                        </label>			
+                        </label>
                     </div>
                 </div>
             </div>
@@ -825,7 +860,8 @@
                         </a>
                     </span>
                 </label>
-                <label class="checkbox_label" for="pin-examples-checkbox"><input id="pin-examples-checkbox" type="checkbox" />
+                <label class="checkbox_label" for="pin-examples-checkbox">
+                    <input id="pin-examples-checkbox" type="checkbox" />
                     Keep Example Messages in Prompt
                 </label>
                 <label class="checkbox_label" for="collapse-newlines-checkbox"><input id="collapse-newlines-checkbox" type="checkbox" />
@@ -1037,14 +1073,16 @@
                     </div>
 
                     <div id="rm_group_buttons">
-                        <label class="checkbox_label">
-                            <input id="rm_group_allow_self_responses" type="checkbox" />
-                            Allow bot responses to self
-                        </label>
-                        <label id="rm_group_automode_label" class="checkbox_label">
-                            <input id="rm_group_automode" type="checkbox" />
-                            Auto Mode
-                        </label>
+                        <div class="rm_group_settings">
+                            <label class="checkbox_label">
+                                <input id="rm_group_allow_self_responses" type="checkbox" />
+                                Allow bot responses to self
+                            </label>
+                            <label id="rm_group_automode_label" class="checkbox_label">
+                                <input id="rm_group_automode" type="checkbox" />
+                                Auto Mode
+                            </label>
+                        </div>
                         <div id="rm_group_buttons_expander">&nbsp;</div>
                         <input id="rm_group_submit" class="menu_button" type="submit" value="Create">
                         <input id="rm_group_delete" class="menu_button" type="submit" value="Delete">
