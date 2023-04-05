@@ -35,6 +35,12 @@ const tiktoken = require('@dqbd/tiktoken');
 var Client = require('node-rest-client').Client;
 var client = new Client();
 
+client.on('error', (err) => {
+    console.error('An error occurred:', err);
+});
+
+let poe = require('./poe-client');
+
 var api_server = "http://0.0.0.0:5000";
 var api_novelai = "https://api.novelai.net";
 let api_openai = "https://api.openai.com/v1";
@@ -1614,6 +1620,80 @@ app.post('/deletegroup', jsonParser, async (request, response) => {
     return response.send({ ok: true });
 });
 
+const POE_DEFAULT_BOT = 'a2';
+
+async function getPoeClient(token) {
+    let client = new poe.Client();
+    await client.init(token);
+    return client;
+}
+
+app.post('/status_poe', jsonParser, async (request, response) => {
+    if (!request.body.token) {
+        return response.sendStatus(400);
+    }
+
+    try {
+        const client = await getPoeClient(request.body.token);
+        const botNames = client.get_bot_names();
+        client.disconnect_ws();
+
+        return response.send({'bot_names': botNames});
+    }
+    catch {
+        return response.sendStatus(401);
+    }
+});
+
+app.post('/purge_poe', jsonParser, async (request, response) => {
+    if (!request.body.token) {
+        return response.sendStatus(400);
+    }
+
+    const token = request.body.token;
+    const bot = request.body.bot ?? POE_DEFAULT_BOT;
+    const count = request.body.count ?? -1;
+
+    try {
+        const client = await getPoeClient(token);
+        await client.purge_conversation(bot, count);
+        client.disconnect_ws();
+    
+        return response.send({"ok" : true});
+    }
+    catch {
+        return response.sendStatus(500);
+    }
+});
+
+app.post('/generate_poe', jsonParser, async (request, response) => {
+    if (!request.body.token || !request.body.prompt) {
+        return response.sendStatus(400);
+    }
+    
+    const token = request.body.token;
+    const prompt = request.body.prompt;
+    const bot = request.body.bot ?? POE_DEFAULT_BOT;
+    
+    try {
+        const client = await getPoeClient(token);
+    
+        let reply;
+        for await (const mes of client.send_message(bot, prompt)) {
+            reply = mes.text;
+        }
+
+        console.log(reply);
+    
+        client.disconnect_ws();
+    
+        return response.send({'reply': reply});
+    }
+    catch {
+        return response.sendStatus(500);
+    }
+});
+
 function getThumbnailFolder(type) {
     let thumbnailFolder;
 
@@ -1857,6 +1937,18 @@ app.post("/tokenize_openai", jsonParser, function (request, response_tokenize_op
     tokenizer.free();
 
     response_tokenize_openai.send({ "token_count": num_tokens });
+});
+
+app.post("/savepreset_openai", jsonParser, function (request, response) {
+    const name = sanitize(request.query.name);
+    if (!request.body || !name) {
+        return response.sendStatus(400);
+    }
+
+    const filename = `${name}.settings`;
+    const fullpath = path.join(directories.openAI_Settings, filename);
+    fs.writeFileSync(fullpath, JSON.stringify(request.body), 'utf-8');
+    return response.send({ name });
 });
 
 // ** REST CLIENT ASYNC WRAPPERS **
