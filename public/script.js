@@ -5,6 +5,7 @@ import {
     kai_settings,
     loadKoboldSettings,
     formatKoboldUrl,
+    getKoboldGenerationData,
 } from "./scripts/kai-settings.js";
 
 import {
@@ -38,16 +39,9 @@ import {
 } from "./scripts/group-chats.js";
 
 import {
-    force_pygmalion_formatting,
-    collapse_newlines,
-    pin_examples,
     collapseNewlines,
-    disable_description_formatting,
-    disable_personality_formatting,
-    disable_scenario_formatting,
-    always_force_name2,
-    custom_chat_separator,
-    multigen,
+    loadPowerUserSettings,
+    power_user,
 } from "./scripts/power-user.js";
 
 import {
@@ -71,6 +65,23 @@ import {
 } from "./scripts/nai-settings.js";
 
 import { showBookmarksButtons } from "./scripts/bookmarks.js";
+
+import {
+    horde_settings,
+    loadHordeSettings,
+    generateHorde,
+    checkHordeStatus,
+    adjustHordeGenerationParams,
+} from "./scripts/horde.js";
+
+import {
+    poe_settings,
+    loadPoeSettings,
+    POE_MAX_CONTEXT,
+    generatePoe,
+    is_get_status_poe,
+    setPoeOnlineStatus,
+} from "./scripts/poe.js";
 
 import { debounce, delay } from "./scripts/utils.js";
 
@@ -105,6 +116,8 @@ export {
     getExtensionPrompt,
     showSwipeButtons,
     hideSwipeButtons,
+    changeMainAPI,
+    setGenerationProgress,
     chat,
     this_chid,
     settings,
@@ -120,6 +133,7 @@ export {
     is_send_press,
     api_server_textgenerationwebui,
     count_view_mes,
+    max_context,
     default_avatar,
     system_message_types,
     talkativeness_default,
@@ -165,10 +179,12 @@ let is_mes_reload_avatar = false;
 let optionsPopper = Popper.createPopper(document.getElementById('send_form'), document.getElementById('options'), {
     placement: 'top-start'
 });
+let dialogueResolve = null;
 
 const durationSaveEdit = 200;
 const saveSettingsDebounced = debounce(() => saveSettings(), durationSaveEdit);
 const saveCharacterDebounced = debounce(() => $("#create_button").click(), durationSaveEdit);
+const getStatusDebounced = debounce(() => getStatus(), 5000);
 
 const system_message_types = {
     HELP: "help",
@@ -333,7 +349,6 @@ var message_already_generated = "";
 var if_typing_text = false;
 const tokens_cycle_count = 30;
 var cycle_count_generation = 0;
-let extension_generation_function = null;
 
 var swipes = false;
 
@@ -417,6 +432,7 @@ function checkOnlineStatus() {
         is_get_status = false;
         is_get_status_novel = false;
         setOpenAIOnlineStatus(false);
+        setPoeOnlineStatus(false);
     } else {
         $("#online_status_indicator2").css("background-color", "green"); //kobold
         $("#online_status_text2").html(online_status);
@@ -429,6 +445,24 @@ function checkOnlineStatus() {
 
 async function getStatus() {
     if (is_get_status) {
+        if (main_api == "kobold" && horde_settings.use_horde) {
+            try {
+                const hordeStatus = await checkHordeStatus();
+                online_status = hordeStatus ? 'Connected' : 'no_connection';
+                resultCheckStatus();
+    
+                if (online_status !== "no_connection") {
+                    getStatusDebounced();
+                }
+            }
+            catch {
+                online_status = "no_connection";
+                resultCheckStatus();
+            }
+
+            return;
+        }
+
         jQuery.ajax({
             type: "POST", //
             url: "/getstatus", //
@@ -448,7 +482,7 @@ async function getStatus() {
                 if (online_status == undefined) {
                     online_status = "no_connection";
                 }
-                if (online_status.toLowerCase().indexOf("pygmalion") != -1 || (online_status !== "no_connection" && force_pygmalion_formatting)) {
+                if (online_status.toLowerCase().indexOf("pygmalion") != -1 || (online_status !== "no_connection" && power_user.force_pygmalion_formatting)) {
                     is_pygmalion = true;
                     online_status += " (Pyg. formatting on)";
                 } else {
@@ -470,7 +504,7 @@ async function getStatus() {
             },
         });
     } else {
-        if (is_get_status_novel != true && is_get_status_openai != true && main_api != "extension") {
+        if (is_get_status_novel != true && is_get_status_openai != true && main_api != "poe") {
             online_status = "no_connection";
         }
     }
@@ -1025,7 +1059,7 @@ function getExtensionPrompt(position = 0, depth = undefined, separator = "\n") {
     if (extension_prompt.length && !extension_prompt.endsWith(separator)) {
         extension_prompt = extension_prompt + separator;
     }
-	extension_prompt = substituteParams(extension_prompt);
+    extension_prompt = substituteParams(extension_prompt);
     return extension_prompt;
 }
 
@@ -1040,7 +1074,7 @@ function baseChatReplace(value, name1, name2) {
         value = value.replace(/<USER>/gi, name1);
         value = value.replace(/<BOT>/gi, name2);
 
-        if (collapse_newlines) {
+        if (power_user.collapse_newlines) {
             value = collapseNewlines(value);
         }
     }
@@ -1054,8 +1088,9 @@ function appendToStoryString(value, prefix) {
     return '';
 }
 
-async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").length
+async function Generate(type, automatic_trigger, force_name2) {
     console.log('Generate entered');
+    setGenerationProgress(0);
     tokens_already_generated = 0;
     message_already_generated = name2 + ': ';
 
@@ -1190,12 +1225,12 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
         }
 
         if (is_pygmalion) {
-            storyString += appendToStoryString(charDescription, disable_description_formatting ? '' : name2 + "'s Persona: ");
-            storyString += appendToStoryString(charPersonality, disable_personality_formatting ? '' : 'Personality: ');
-            storyString += appendToStoryString(Scenario, disable_scenario_formatting ? '' : 'Scenario: ');
+            storyString += appendToStoryString(charDescription, power_user.disable_description_formatting ? '' : name2 + "'s Persona: ");
+            storyString += appendToStoryString(charPersonality, power_user.disable_personality_formatting ? '' : 'Personality: ');
+            storyString += appendToStoryString(Scenario, power_user.disable_scenario_formatting ? '' : 'Scenario: ');
         } else {
             if (charDescription !== undefined) {
-                if (charPersonality.length > 0 && !disable_personality_formatting) {
+                if (charPersonality.length > 0 && !power_user.disable_personality_formatting) {
                     charPersonality = name2 + "'s personality: " + charPersonality;
                 }
             }
@@ -1211,13 +1246,13 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
             }
         }
 
-        if (custom_chat_separator && custom_chat_separator.length) {
+        if (power_user.custom_chat_separator && power_user.custom_chat_separator.length) {
             for (let i = 0; i < mesExamplesArray.length; i++) {
-                mesExamplesArray[i] = mesExamplesArray[i].replace(/<START>/gi, custom_chat_separator);
+                mesExamplesArray[i] = mesExamplesArray[i].replace(/<START>/gi, power_user.custom_chat_separator);
             }
         }
 
-        if (pin_examples) {
+        if (power_user.pin_examples && main_api !== 'openai') {
             for (let example of mesExamplesArray) {
                 if (!is_pygmalion) {
                     if (!storyString.endsWith('\n')) {
@@ -1230,7 +1265,7 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
         }
 
         // Pygmalion does that anyway
-        if (always_force_name2 && !is_pygmalion) {
+        if (power_user.always_force_name2 && !is_pygmalion) {
             force_name2 = true;
         }
 
@@ -1292,8 +1327,20 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
             this_max_context = (max_context - amount_gen);
         }
 
+        if (main_api == 'poe') {
+            this_max_context = Math.min(Number(max_context), POE_MAX_CONTEXT);
+        }
+
+        let hordeAmountGen = null;
+        if (main_api == 'kobold' && horde_settings.use_horde && horde_settings.auto_adjust) {
+            const adjustedParams = await adjustHordeGenerationParams(this_max_context, amount_gen);
+            this_max_context = adjustedParams.maxContextLength;
+            hordeAmountGen = adjustedParams.maxLength;
+        }
+
         let { worldInfoString, worldInfoBefore, worldInfoAfter } = getWorldInfoPrompt(chat2);
         let extension_prompt = getExtensionPrompt(extension_prompt_types.AFTER_SCENARIO);
+        const zeroDepthAnchor = getExtensionPrompt(extension_prompt_types.IN_CHAT, 0, ' ');
 
         /////////////////////// swipecode
         if (type == 'swipe') {
@@ -1311,23 +1358,12 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
             chat2.push('');
         }
 
-        if (main_api === 'extension') {
-            if (typeof extension_generation_function !== 'function') {
-                callPopup('No extensions are hooked up to a generation process. Check you extension settings!', 'text');
-                activateSendButtons();
-                return;
-            }
-
-            await extension_generation_function(type, chat2, storyString, mesExamplesArray, promptBias, extension_prompt, worldInfoBefore, worldInfoAfter);
-            return;
-        }
-
-        for (var item of chat2) {//console.log(encode("dsfs").length);
+        for (var item of chat2) {
             chatString = item + chatString;
             if (encode(JSON.stringify(
                 worldInfoString + storyString + chatString +
                 anchorTop + anchorBottom +
-                charPersonality + promptBias + extension_prompt
+                charPersonality + promptBias + extension_prompt + zeroDepthAnchor
             )).length + 120 < this_max_context) { //(The number of tokens in the entire promt) need fix, it must count correctly (added +120, so that the description of the character does not hide)
                 //if (is_pygmalion && i == chat2.length-1) item='<START>\n'+item;
                 arrMes[arrMes.length] = item;
@@ -1342,11 +1378,11 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
             count_exm_add = 0;
 
             if (i === chat2.length - 1) {
-                if (!pin_examples) {
+                if (!power_user.pin_examples) {
                     let mesExmString = '';
                     for (let iii = 0; iii < mesExamplesArray.length; iii++) {
                         mesExmString += mesExamplesArray[iii];
-                        const prompt = worldInfoString + storyString + mesExmString + chatString + anchorTop + anchorBottom + charPersonality + promptBias + extension_prompt;
+                        const prompt = worldInfoString + storyString + mesExmString + chatString + anchorTop + anchorBottom + charPersonality + promptBias + extension_prompt + zeroDepthAnchor;
                         if (encode(JSON.stringify(prompt)).length + 120 < this_max_context) {
                             if (!is_pygmalion) {
                                 mesExamplesArray[iii] = mesExamplesArray[iii].replace(/<START>/i, `This is how ${name2} should talk`);
@@ -1362,7 +1398,7 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
                     if (!storyString.endsWith('\n')) {
                         storyString += '\n';
                     }
-                    storyString += !disable_scenario_formatting ? `Circumstances and context of the dialogue: ${Scenario}\n` : `${Scenario}\n`;
+                    storyString += !power_user.disable_scenario_formatting ? `Circumstances and context of the dialogue: ${Scenario}\n` : `${Scenario}\n`;
                 }
                 console.log('calling runGenerate');
                 await runGenerate();
@@ -1454,6 +1490,9 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
 
                     mesSendString += mesSend[j];
                     if (force_name2 && j === mesSend.length - 1 && tokens_already_generated === 0) {
+                        if (!mesSendString.endsWith('\n')) {
+                            mesSendString += '\n';
+                        }
                         mesSendString += name2 + ':';
                     }
                 }
@@ -1462,7 +1501,7 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
             function checkPromtSize() {
 
                 setPromtString();
-                let thisPromtContextSize = encode(JSON.stringify(worldInfoString + storyString + mesExmString + mesSendString + anchorTop + anchorBottom + charPersonality + generatedPromtCache + promptBias + extension_prompt)).length + 120;
+                let thisPromtContextSize = encode(JSON.stringify(worldInfoString + storyString + mesExmString + mesSendString + anchorTop + anchorBottom + charPersonality + generatedPromtCache + promptBias + extension_prompt + zeroDepthAnchor)).length + 120;
 
                 if (thisPromtContextSize > this_max_context) {		//if the prepared prompt is larger than the max context size...
 
@@ -1481,8 +1520,6 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
                 }
             }
 
-
-
             if (generatedPromtCache.length > 0) {
                 //console.log('Generated Prompt Cache length: '+generatedPromtCache.length);
                 checkPromtSize();
@@ -1492,8 +1529,8 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
             }
 
             // add a custom dingus (if defined)
-            if (custom_chat_separator && custom_chat_separator.length) {
-                mesSendString = custom_chat_separator + '\n' + mesSendString;
+            if (power_user.custom_chat_separator && power_user.custom_chat_separator.length) {
+                mesSendString = power_user.custom_chat_separator + '\n' + mesSendString;
             }
             // add non-pygma dingus
             else if (!is_pygmalion) {
@@ -1506,17 +1543,26 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
             }
             finalPromt = worldInfoBefore + storyString + worldInfoAfter + extension_prompt + mesExmString + mesSendString + generatedPromtCache + promptBias;
 
-            const zeroDepthAnchor = getExtensionPrompt(extension_prompt_types.IN_CHAT, 0, ' ');
             if (zeroDepthAnchor && zeroDepthAnchor.length) {
                 if (!isMultigenEnabled() || tokens_already_generated == 0) {
                     const trimBothEnds = !force_name2 && !is_pygmalion;
-                    finalPromt += (trimBothEnds ? zeroDepthAnchor.trim() : zeroDepthAnchor.trimEnd());
+                    let trimmedPrompt = (trimBothEnds ? zeroDepthAnchor.trim() : zeroDepthAnchor.trimEnd());
+
+                    if (trimBothEnds && !finalPromt.endsWith('\n')) {
+                        finalPromt += '\n';
+                    }
+
+                    finalPromt += trimmedPrompt;
+
+                    if (force_name2 || is_pygmalion) {
+                        finalPromt += ' ';
+                    }
                 }
             }
 
             finalPromt = finalPromt.replace(/\r/gm, '');
 
-            if (collapse_newlines) {
+            if (power_user.collapse_newlines) {
                 finalPromt = collapseNewlines(finalPromt);
             }
 
@@ -1543,6 +1589,10 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
                 }
             }
 
+            if (main_api == 'kobold' && horde_settings.use_horde && hordeAmountGen) {
+                this_amount_gen = Math.min(this_amount_gen, hordeAmountGen);
+            }
+
             var generate_data;
             if (main_api == 'kobold') {
                 var generate_data = {
@@ -1553,33 +1603,9 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
                     max_context_length: max_context,
                     singleline: kai_settings.single_line,
                 };
-                if (preset_settings != 'gui') {
 
-                    generate_data = {
-                        prompt: finalPromt,
-                        gui_settings: false,
-                        sampler_order: this_settings.sampler_order,
-                        max_context_length: parseInt(max_context),//this_settings.max_length,
-                        max_length: this_amount_gen,//parseInt(amount_gen),
-                        rep_pen: parseFloat(kai_settings.rep_pen),
-                        rep_pen_range: parseInt(kai_settings.rep_pen_range),
-                        rep_pen_slope: kai_settings.rep_pen_slope,
-                        temperature: parseFloat(kai_settings.temp),
-                        tfs: kai_settings.tfs,
-                        top_a: kai_settings.top_a,
-                        top_k: kai_settings.top_k,
-                        top_p: kai_settings.top_p,
-                        typical: kai_settings.typical,
-                        s1: this_settings.sampler_order[0],
-                        s2: this_settings.sampler_order[1],
-                        s3: this_settings.sampler_order[2],
-                        s4: this_settings.sampler_order[3],
-                        s5: this_settings.sampler_order[4],
-                        s6: this_settings.sampler_order[5],
-                        s7: this_settings.sampler_order[6],
-                        use_world_info: false,
-                        singleline: kai_settings.single_line,
-                    };
+                if (preset_settings != 'gui' || horde_settings.use_horde) {
+                    generate_data = getKoboldGenerationData(finalPromt, this_settings, this_amount_gen, this_max_context);
                 }
             }
 
@@ -1637,7 +1663,6 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
                 };
             }
 
-
             var generate_url = '';
             if (main_api == 'kobold') {
                 generate_url = '/generate';
@@ -1652,6 +1677,12 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
             if (main_api == 'openai') {
                 let prompt = await prepareOpenAIMessages(name2, storyString, worldInfoBefore, worldInfoAfter, extension_prompt, promptBias);
                 sendOpenAIRequest(prompt).then(onSuccess).catch(onError);
+            }
+            else if (main_api == 'kobold' && horde_settings.use_horde) {
+                generateHorde(finalPromt, generate_data).then(onSuccess).catch(onError);
+            }
+            else if (main_api == 'poe') {
+                generatePoe(finalPromt).then(onSuccess).catch(onError);
             }
             else {
                 jQuery.ajax({
@@ -1676,9 +1707,13 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
                 if (!data.error) {
                     //const getData = await response.json();
                     var getMessage = "";
-                    if (main_api == 'kobold') {
+                    if (main_api == 'kobold' && !horde_settings.use_horde) {
                         getMessage = data.results[0].text;
-                    } else if (main_api == 'textgenerationwebui') {
+                    }
+                    else if (main_api == 'kobold' && horde_settings.use_horde) {
+                        getMessage = data;
+                    }
+                    else if (main_api == 'textgenerationwebui') {
                         getMessage = data.data[0];
                         if (getMessage == null || data.error) {
                             activateSendButtons();
@@ -1686,14 +1721,15 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
                             return;
                         }
                         getMessage = getMessage.substring(finalPromt.length);
-                    } else if (main_api == 'novel') {
+                    }
+                    else if (main_api == 'novel') {
                         getMessage = data.output;
                     }
-                    if (main_api == 'openai') {
+                    if (main_api == 'openai' || main_api == 'poe') {
                         getMessage = data;
                     }
 
-                    if (collapse_newlines) {
+                    if (power_user.collapse_newlines) {
                         getMessage = collapseNewlines(getMessage);
                     }
 
@@ -1760,11 +1796,10 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
                 console.log('/savechat called by /Generate');
 
                 saveChatConditional();
-                //let final_message_length = encode(JSON.stringify(getMessage)).length;
-                //console.log('AI Response: +'+getMessage+ '('+final_message_length+' tokens)');
 
                 activateSendButtons();
                 showSwipeButtons();
+                setGenerationProgress(0);
                 $('.mes_edit:last').show();
             };
 
@@ -1772,6 +1807,7 @@ async function Generate(type, automatic_trigger, force_name2) {//encode("dsfs").
                 $("#send_textarea").removeAttr('disabled');
                 is_send_press = false;
                 activateSendButtons();
+                setGenerationProgress(0);
                 console.log(exception);
                 console.log(jqXHR);
             };
@@ -1835,7 +1871,7 @@ function saveReply(type, getMessage, this_mes_is_name) {
 }
 
 function isMultigenEnabled() {
-    return multigen && (main_api == 'textgenerationwebui' || main_api == 'kobold' || main_api == 'novel');
+    return power_user.multigen && (main_api == 'textgenerationwebui' || main_api == 'kobold' || main_api == 'novel');
 }
 
 function activateSendButtons() {
@@ -2063,9 +2099,9 @@ function changeMainAPI() {
             amountGenElem: $("#amount_gen_block"),
             softPromptElem: $("#softprompt_block"),
         },
-        "extension": {
-            apiSettings: $(""),
-            apiConnector: $("#extension_api"),
+        "poe": {
+            apiSettings: $("#poe_settings"),
+            apiConnector: $("#poe_api"),
             apiPresets: $(""),
             apiRanges: $(""),
             maxContextElem: $("#max_context_block"),
@@ -2084,6 +2120,10 @@ function changeMainAPI() {
         apiObj.apiConnector.css("display", isCurrentApi ? "block" : "none");
         apiObj.apiRanges.css("display", isCurrentApi ? "block" : "none");
         apiObj.apiPresets.css("display", isCurrentApi ? "block" : "none");
+
+        if (isCurrentApi && apiName === "openai") {
+            apiObj.apiPresets.css("display", "flex");
+        }
 
         if (isCurrentApi && apiName === "kobold") {
             //console.log("enabling SP for kobold");
@@ -2108,9 +2148,9 @@ function changeMainAPI() {
     main_api = selectedVal;
     online_status = "no_connection";
 
-    if (main_api == "extension") {
-        online_status = "Connected";
-        checkOnlineStatus();
+    if (main_api == "kobold" && horde_settings.use_horde) {
+        is_get_status = true;
+        getStatus();
     }
 }
 
@@ -2283,6 +2323,16 @@ async function getSettings(type) {
                 // OpenAI
                 loadOpenAISettings(data, settings);
 
+                // Horde
+                loadHordeSettings(settings);
+
+                // Poe
+                loadPoeSettings(settings);
+
+                // Load power user settings
+                loadPowerUserSettings(settings);
+
+
                 //Enable GUI deference settings if GUI is selected for Kobold
                 if (main_api === "kobold") {
                     if (preset_settings == "gui") {
@@ -2378,6 +2428,9 @@ async function saveSettings(type) {
             active_character: active_character,
             textgenerationwebui_settings: textgenerationwebui_settings,
             swipes: swipes,
+            horde_settings: horde_settings,
+            power_user: power_user,
+            poe_settings: poe_settings,
             ...nai_settings,
             ...kai_settings,
             ...oai_settings,
@@ -2536,7 +2589,7 @@ async function getStatusNovel() {
             },
         });
     } else {
-        if (is_get_status != true && is_get_status_openai != true && main_api != "extension") {
+        if (is_get_status != true && is_get_status_openai != true && is_get_status_poe != true) {
             online_status = "no_connection";
         }
     }
@@ -2743,7 +2796,6 @@ function callPopup(text, type) {
             $("#dialogue_popup_ok").text("Ok");
             $("#dialogue_popup_cancel").css("display", "none");
             break;
-
         case "world_imported":
         case "new_chat":
             $("#dialogue_popup_ok").text("Yes");
@@ -2754,12 +2806,26 @@ function callPopup(text, type) {
         default:
             $("#dialogue_popup_ok").text("Delete");
     }
+
+    $("#dialogue_popup_input").val('');
+    if (popup_type == 'input') {
+        $("#dialogue_popup_input").css("display", "block");
+        $("#dialogue_popup_ok").text("Save");
+    }
+    else {
+        $("#dialogue_popup_input").css("display", "none");
+    }
+
     $("#dialogue_popup_text").html(text);
     $("#shadow_popup").css("display", "block");
     $("#shadow_popup").transition({
         opacity: 1.0,
         duration: animation_rm_duration,
         easing: animation_rm_easing,
+    });
+
+    return new Promise((resolve) => {
+        dialogueResolve = resolve;
     });
 }
 
@@ -2923,8 +2989,16 @@ function closeMessageEditor() {
     }
 }
 
-function setGenerationFunction(func) {
-    extension_generation_function = func;
+function setGenerationProgress(progress) {
+    if (!progress) {
+        $('#send_textarea').css({'background': '', 'transition': ''});
+    }
+    else {
+        $('#send_textarea').css({
+            'background': `linear-gradient(90deg, #008000d6 ${progress}%, transparent ${progress}%)`,
+            'transition': '0.25s ease-in-out'
+        });
+    }
 }
 
 window["TavernAI"].getContext = function () {
@@ -2947,8 +3021,6 @@ window["TavernAI"].getContext = function () {
         setExtensionPrompt: setExtensionPrompt,
         saveChat: saveChatConditional,
         sendSystemMessage: sendSystemMessage,
-        setGenerationFunction: setGenerationFunction,
-        generationFunction: extension_generation_function,
         activateSendButtons,
         deactivateSendButtons, 
         saveReply,
@@ -3522,11 +3594,28 @@ $(document).ready(function () {
             saveCharacterDebounced();
             getChat();
         }
+
+        if (dialogueResolve) {
+            if (popup_type == 'input') {
+                dialogueResolve($("#dialogue_popup_input").val());
+                $("#dialogue_popup_input").val('');
+            }
+            else {
+                dialogueResolve(true);
+            }
+
+            dialogueResolve = null;
+        }
     });
     $("#dialogue_popup_cancel").click(function (e) {
         $("#shadow_popup").css("display", "none");
         $("#shadow_popup").css("opacity:", 0.0);
         popup_type = "";
+
+        if (dialogueResolve) {
+            dialogueResolve(false);
+            dialogueResolve = null;
+        }
     });
 
     $("#add_bg_button").change(function () {
@@ -3540,6 +3629,7 @@ $(document).ready(function () {
 
     $("#form_create").submit(function (e) {
         $("#rm_info_avatar").html("");
+        let save_name = create_save_name;
         var formData = new FormData($("#form_create").get(0));
         if ($("#form_create").attr("actiontype") == "createcharacter") {
             if ($("#character_name_pole").val().length > 0) {
@@ -3595,7 +3685,7 @@ $(document).ready(function () {
                             $("#rm_info_block").transition({ opacity: 0, duration: 0 });
                             var $prev_img = $("#avatar_div_div").clone();
                             $("#rm_info_avatar").append($prev_img);
-                            select_rm_info("Character created", oldSelectedChar);
+                            select_rm_info(`Character created<br><h4>${DOMPurify.sanitize(save_name)}</h4>`, oldSelectedChar);
 
                             $("#rm_info_block").transition({ opacity: 1.0, duration: 2000 });
                         } else {
@@ -3724,7 +3814,7 @@ $(document).ready(function () {
 
     $("#api_button").click(function (e) {
         e.stopPropagation();
-        if ($("#api_url_text").val() != "") {
+        if ($("#api_url_text").val() != "" && !horde_settings.use_horde) {
             let value = formatKoboldUrl($.trim($("#api_url_text").val()));
 
             if (!value) {
@@ -3744,6 +3834,12 @@ $(document).ready(function () {
             getStatus();
             clearSoftPromptsList();
             getSoftPromptsList();
+        }
+        else if (horde_settings.use_horde) {
+            main_api = "kobold";
+            is_get_status = true;
+            getStatus();
+            clearSoftPromptsList();
         }
     });
 
@@ -3972,6 +4068,7 @@ $(document).ready(function () {
         is_get_status = false;
         is_get_status_novel = false;
         setOpenAIOnlineStatus(false);
+        setPoeOnlineStatus(false);
         online_status = "no_connection";
         clearSoftPromptsList();
         checkOnlineStatus();
@@ -4330,7 +4427,7 @@ $(document).ready(function () {
                     }
 
                     await getCharacters();
-                    select_rm_info("Character created", oldSelectedChar);
+                    select_rm_info(`Character imported<br><h4>${DOMPurify.sanitize(data.file_name)}</h4>`, oldSelectedChar);
                     $("#rm_info_block").transition({ opacity: 1, duration: 1000 });
                 }
             },

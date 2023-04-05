@@ -15,13 +15,13 @@ import {
 } from "../script.js";
 
 import {
-    fast_ui_mode,
-    pin_examples,
+    power_user,
 } from "./power-user.js";
 
 import { LoadLocal, SaveLocal, ClearLocal, CheckLocal, LoadLocalBool } from "./f-localStorage.js";
 import { selected_group, is_group_generating } from "./group-chats.js";
 import { oai_settings } from "./openai.js";
+import { poe_settings } from "./poe.js";
 
 var NavToggle = document.getElementById("nav-toggle");
 var PanelPin = document.getElementById("rm_button_panel_pin");
@@ -156,7 +156,7 @@ function RA_CountCharTokens() {
                     characters[this_chid].description +
                     characters[this_chid].personality +
                     characters[this_chid].scenario +
-                    (pin_examples ? characters[this_chid].mes_example : '') // add examples to permanent if they are pinned
+                    (power_user.pin_examples ? characters[this_chid].mes_example : '') // add examples to permanent if they are pinned
                 )).length;
         } else { console.log("RA_TC -- no valid char found, closing."); }                // if neither, probably safety char or some error in loading
     }
@@ -206,7 +206,7 @@ function RA_checkOnlineStatus() {
     } else {
         if (online_status !== undefined && online_status !== "no_connection") {
             $("#send_textarea").attr("placeholder", "Type a message..."); //on connect, placeholder tells user to type message
-            const formColor = fast_ui_mode ? "var(--black90a)" : "var(--black60a)";
+            const formColor = power_user.fast_ui_mode ? "var(--black90a)" : "var(--black60a)";
             $("#send_form").css("background-color", formColor); //on connect, form BG changes to transprent black
             $("#API-status-top").removeClass("redOverlayGlow");
             connection_made = true;
@@ -247,6 +247,12 @@ function RA_autoconnect(PrevApi) {
                     $("#api_button_openai").click();
 
                 }
+                break;
+            case 'poe':
+                if (poe_settings.token) {
+                    $("#poe_connect").click();
+                }
+                break;
         }
 
         if (!connection_made) {

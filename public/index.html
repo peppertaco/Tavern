@@ -36,6 +36,8 @@
     <script type="module" src="scripts/kai-settings.js"></script>
     <script type="module" src="scripts/textgen-settings.js"></script>
     <script type="module" src="scripts/bookmarks.js"></script>
+    <script type="module" src="scripts/horde.js"></script>
+    <script type="module" src="scripts/poe.js"></script>
 
     <title>Tavern.AI</title>
 </head>
@@ -80,16 +82,42 @@
                         <option value="textgenerationwebui">Text generation web UI</option>
                         <option value="novel">NovelAI</option>
                         <option value="openai">OpenAI</option>
-                        <option value="extension">Extension</option>
+                        <option value="poe">Poe</option>
                     </select>
                 </div>
                 <div id="kobold_api" style="position: relative;"> <!-- shows the kobold settings -->
                     <form action="javascript:void(null);" method="post" enctype="multipart/form-data">
-                        <h4>API url</h4>
-                        <h5>Example: http://127.0.0.1:5000/api </h5>
-                        <input id="api_url_text" name="api_url" class="text_pole" maxlength="500" value="" autocomplete="off">
-                        <input id="api_button" class="menu_button" type="submit" value="Connect">
-                        <img id="api_loading" src="img/load.svg">
+                        <label for="use_horde" class="checkbox_label">
+                            <input id="use_horde" type="checkbox" />
+                            Use Horde.
+                            <a target="_blank" href="https://horde.koboldai.net/">Learn more</a>
+                        </label>
+                        <div id="kobold_api_block">
+                            <h4>API url</h4>
+                            <h5>Example: http://127.0.0.1:5000/api </h5>
+                            <input id="api_url_text" name="api_url" class="text_pole" maxlength="500" value="" autocomplete="off">
+                            <input id="api_button" class="menu_button" type="submit" value="Connect">
+                            <img id="api_loading" src="img/load.svg">
+                        </div>
+                        <div id="kobold_horde_block">
+
+                            <label for="horde_auto_adjust" class="checkbox_label">
+                                <input id="horde_auto_adjust" type="checkbox" />
+                                Adjust generation to worker capabilities
+                            </label>
+                            <h4>API key</h4>
+                            <h5>Get it here: <a target="_blank" href="https://horde.koboldai.net/register">Register</a></h5>
+                            <input id="horde_api_key" name="horde_api_key" class="text_pole" maxlength="500" value="0000000000" autocomplete="off">
+                            <h4 class="horde_model_title">
+                                Model 
+                                <div id="horde_refresh" title="Refresh models" class="right_menu_button">
+                                    <img class="svg_icon" src="img/repeat-solid.svg" />
+                                </div>
+                            </h4>
+                            <select id="horde_model">
+                                <option>-- Not connected to Horde --</option>
+                            </select>
+                        </div>
                         <div id="online_status2">
                             <div id="online_status_indicator2"></div>
                             <div id="online_status_text2">Not connected</div>
@@ -166,8 +194,48 @@
                     </div>
                 </div>
 
-                <div id="extension_api">
-                    <b>Generation is handled by the external extensions.</b>
+                <div id="poe_api">
+                    <div class="inline-drawer">
+                        <div class="inline-drawer-toggle inline-drawer-header">
+                            <b>Instructions:</b>
+                            <div class="inline-drawer-icon down"></div>
+                        </div>
+                        <div class="inline-drawer-content">
+                            <ol>
+                                <li>Login to <a href="https://poe.com" target="_blank">poe.com</a></li>
+                                <li>Open browser DevTools (F12) and navigate to "Application" tab</li>
+                                <li>Find a <tt>p-b</tt> cookie for poe.com domain and copy its value</li>
+                                <li>Paste cookie value to the box below and click "Connect"</li>
+                                <li>Select a character and start chatting</li>
+                            </ol>
+                        </div>
+                    </div>
+                    <div class="range-block">
+                        <div class="range-block-title">
+                            poe.com access token (p-b cookie value)
+                        </div>
+                        <div class="range-block-range">
+                            <input id="poe_token" class="text_pole" type="text" placeholder="Example: nTLG2bNvbOi8qxc-DbaSlw%3D%3D" />
+                        </div>
+                    </div>
+
+                    <input id="poe_connect" class="menu_button" type="button" value="Connect" />
+                    <img id="api_loading_poe" src="img/load.svg">
+
+                    <div class="range-block">
+                        <div class="range-block-title">
+                            <h4>Bot</h4>
+                        </div>
+                        <div class="range-block-range">
+                            <select id="poe_bots">
+                                <option>-- Connect to the API --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="online_status4">
+                        <div class="online_status_indicator4"></div>
+                        <div class="online_status_text4">No connection...</div>
+                    </div>
                 </div>
 
                 <label for="auto-connect-checkbox" class="checkbox_label"><input id="auto-connect-checkbox" type="checkbox" />
@@ -194,7 +262,7 @@
                     <input id="your_name" name="your_name" class="text_pole" maxlength="35" value="" autocomplete="off"><br>
                     <input id="your_name_button" class="menu_button" type="submit" title="Click to set a new User Name (reloads page)" value="Change Name">
                 </form>
-                <div class="ui-settings">
+               <div class="ui-settings">
                     <div class="range-block">
                         <div class="range-block-title">
                             <h4>Fast UI Mode</h4>
@@ -235,7 +303,7 @@
                                 <input name="avatar_style" type="radio" value="1" />
                                 Rectangular
                             </label>
-						</div>
+                        </div>
                     </div>
                 </div>
                 <div id="power-user-options-block">
@@ -285,16 +353,20 @@
                                 </select>
                             </div>
                             <div id="openai_api-presets">
-                                <h3>OpenAI Presets</h3>
-                                <select id="settings_perset_openai">
-                                    <option value="gui">Default</option>
-                                </select>
-                                <h4>OpenAI Model</h4>
-                                <select id="model_openai_select">
-                                    <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
-                                    <option value="gpt-3.5-turbo-0301">gpt-3.5-turbo-0301</option>
-                                    <option value="gpt-4">gpt-4</option>
-                                </select>
+                                <div>
+                                    <h3>OpenAI Presets</h3>
+                                    <select id="settings_perset_openai">
+                                        <option value="gui">Default</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <h4>OpenAI Model</h4>
+                                    <select id="model_openai_select">
+                                        <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                                        <option value="gpt-3.5-turbo-0301">gpt-3.5-turbo-0301</option>
+                                        <option value="gpt-4">gpt-4</option>
+                                    </select>
+                                </div>
                             </div>
                             <div id="textgenerationwebui_api-presets">
                                 <h3>Text generation web UI presets</h3>
@@ -477,6 +549,31 @@
                                     </div>
                                     <div class="range-block-range">
                                         <input type="range" id="pres_pen_openai" name="volume" min="-2" max="2" step="0.01">
+                                    </div>
+                                </div>
+
+                                <div style="display:none" class="range-block">
+                                    <div class="range-block-title">
+                                        Logit Bias
+                                    </div>
+                                    <div class="openai_logit_bias">
+                                        <div class="openai_logit_bias_form">
+                                            <input class="text_pole" id="openai_logit_bias_text" placeholder="text (will be converted to tokens)" />
+                                            <div class="openai_logit_bias_range_block">
+                                                <div class="range-block-counter">
+                                                    <span id="openai_logit_bias_value_counter">select</span>
+                                                </div>
+                                                <input id="openai_logit_bias_value" type="range" min="-100" value="0" max="100" />
+                                            </div>
+                                            <input class="menu_button" id="openai_logit_bias_add" type="button" value="Add" />
+                                        </div>
+                                        <div class="openai_logit_bias_list">
+                                            <div class="openai_logit_bias_list_item">
+                                                <span class="token_id">666</span>
+                                                <span class="separator">:</span>
+                                                <span class="bias_value">-100</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -706,7 +803,7 @@
                                 <div class="range-block">
                                     <label title="Inserts jailbreak as a last system message" class="checkbox_label">
                                         <input id="jailbreak_system" type="checkbox" />
-                                        Jailbreak as system message
+                                        Send Jailbreak
                                     </label>
                                 </div>
 
@@ -735,31 +832,72 @@
                                 <br>
 
                                 <div class="range-block">
-                                    <div class="range-block-title">
-                                        Main prompt
+                                    <div class="range-block-title openai_restorable">
+                                        <span>Main prompt</span>
+                                        <div id="main_prompt_restore" title="Restore default prompt" class="right_menu_button">
+                                            <img alt="" class="svg_icon" src="img/clock-rotate-left-solid.svg" />
+                                        </div>
                                     </div>
                                     <div class="range-block-counter">
                                         The main prompt used to set the model behavior
                                     </div>
                                     <div class="range-block-range">
-                                        <textarea id="main_prompt_textarea" class="text_pole" name="main_prompt" rows="6" placeholder=""></textarea>
+                                        <textarea id="main_prompt_textarea" class="text_pole" name="main_prompt" rows="3" placeholder=""></textarea>
                                     </div>
                                 </div>
 
                                 <div class="range-block">
-                                    <div class="range-block-title">
-                                        NSFW/Jailbreak prompt
+                                    <div class="range-block-title openai_restorable">
+                                        <span>NSFW prompt</span>
+                                        <div id="nsfw_prompt_restore" title="Restore default prompt" class="right_menu_button">
+                                            <img alt="" class="svg_icon" src="img/clock-rotate-left-solid.svg" />
+                                        </div>
                                     </div>
                                     <div class="range-block-counter">
-                                        Prompt that is used when the NSFW/Jailbreak toggle is on
+                                        Prompt that is used when the NSFW toggle is on
                                     </div>
                                     <div class="range-block-range">
-                                        <textarea id="nsfw_prompt_textarea" class="custom_textarea" name="nsfw_prompt" rows="6" placeholder=""></textarea>
+                                        <textarea id="nsfw_prompt_textarea" class="custom_textarea" name="nsfw_prompt" rows="3" placeholder=""></textarea>
                                     </div>
                                 </div>
 
                                 <div class="range-block">
-                                    <input id="save_prompts" class="menu_button" type="button" value="Save prompt settings">
+                                    <div class="range-block-title openai_restorable">
+                                        <span>Jailbreak prompt</span>
+                                        <div id="jailbreak_prompt_restore" title="Restore default prompt" class="right_menu_button">
+                                            <img alt="" class="svg_icon" src="img/clock-rotate-left-solid.svg" />
+                                        </div>
+                                    </div>
+                                    <div class="range-block-counter">
+                                        Prompt that is used when the Jailbreak toggle is on
+                                    </div>
+                                    <div class="range-block-range">
+                                        <textarea id="jailbreak_prompt_textarea" class="custom_textarea" name="jailbreak_prompt" rows="3" placeholder=""></textarea>
+                                    </div>
+                                </div>
+
+                                <div class="range-block openai_preset_buttons">
+                                    <input id="update_preset" class="menu_button" type="button" value="Update current preset">
+                                    <input id="new_preset" class="menu_button" type="button" value="Create new preset">
+                                </div>
+                            </div>
+
+                            <div id="poe_settings">
+                                <div class="range-block">
+                                    <div class="range-block-title">
+                                        Jailbreak activation message
+                                    </div>
+                                    <div class="range-block-range">
+                                        <textarea id="poe_activation_message" rows="3"></textarea>
+                                    </div>
+                                </div>
+                                <div class="range-block">
+                                    <div class="range-block-title">
+                                        Jailbreak activation response
+                                    </div>
+                                    <div class="range-block-range">
+                                        <input id="poe_activation_response" class="text_pole" type="text" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1037,6 +1175,21 @@
                         </div>
                         <input id="rm_group_chat_name" class="text_pole" type="text" name="chat_name" placeholder="Chat Name (Optional)" />
                     </div>
+                    <div id="rm_group_buttons">
+                        <div class="rm_group_settings">
+                            <label class="checkbox_label">
+                                <input id="rm_group_allow_self_responses" type="checkbox" />
+                                Allow bot responses to self
+                            </label>
+                            <label id="rm_group_automode_label" class="checkbox_label">
+                                <input id="rm_group_automode" type="checkbox" />
+                                Auto Mode
+                            </label>
+                        </div>
+                        <div id="rm_group_buttons_expander">&nbsp;</div>
+                        <input id="rm_group_submit" class="menu_button" type="submit" value="Create">
+                        <input id="rm_group_delete" class="menu_button" type="submit" value="Delete">
+                    </div>
                     <div id="rm_group_add_members_header">
                         <h3>Add Members</h3>
                         <input id="rm_group_filter" class="text_pole" type="search" placeholder="Filter..." />
@@ -1070,22 +1223,6 @@
                             </div>
                             <div class="ch_name"></div>
                         </div>
-                    </div>
-
-                    <div id="rm_group_buttons">
-                        <div class="rm_group_settings">
-                            <label class="checkbox_label">
-                                <input id="rm_group_allow_self_responses" type="checkbox" />
-                                Allow bot responses to self
-                            </label>
-                            <label id="rm_group_automode_label" class="checkbox_label">
-                                <input id="rm_group_automode" type="checkbox" />
-                                Auto Mode
-                            </label>
-                        </div>
-                        <div id="rm_group_buttons_expander">&nbsp;</div>
-                        <input id="rm_group_submit" class="menu_button" type="submit" value="Create">
-                        <input id="rm_group_delete" class="menu_button" type="submit" value="Delete">
                     </div>
                 </div>
 
@@ -1130,6 +1267,7 @@
             <div id="dialogue_popup_text">
                 <h3>text</h3>
             </div>
+            <input id="dialogue_popup_input" class="text_pole" type="text" />
             <div id="dialogue_popup_ok" class="menu_button">Delete</div>
             <div id="dialogue_popup_cancel" class="menu_button">Cancel</div>
         </div>

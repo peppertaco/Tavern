@@ -38,7 +38,7 @@
     box-sizing: border-box;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    -moz-appearance: initial;
+    -moz-appearance: auto;
     scroll-behavior: smooth;
 }
 
@@ -809,7 +809,8 @@ img[src*="user-slash-solid.svg"] {
 
 #api_button:hover,
 #api_button_novel:hover,
-#api_button_textgenerationwebui:hover {
+#api_button_textgenerationwebui:hover,
+#poe_connect:hover {
     background-color: green;
 }
 
@@ -1291,6 +1292,17 @@ input[type=search]:focus::-webkit-search-cancel-button {
 #online_status_text3 {
     margin-left: 4px;
     display: inline-block;
+}
+
+.horde_model_title {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    column-gap: 20px;
+}
+
+.horde_model_title .right_menu_button img.svg_icon {
+    height: 20px;
 }
 
 #softprompt {
@@ -2194,7 +2206,6 @@ input[type="range"]{
     flex-direction: row;
     width: 100%;
     align-items: center;
-    margin-bottom: 10px;
     column-gap: 10px;
 }
 
@@ -2891,7 +2902,7 @@ filter: invert(20%) sepia(100%) saturate(2518%) hue-rotate(353deg) brightness(93
     box-shadow: 0 0 20px black;
     min-width: 400px;
     overflow-y: scroll;
-    max-height: calc(100vh - 70px);
+    max-height: calc(100svh - 70px);
     display: none;
     position: absolute;
     left:0;
@@ -2912,8 +2923,78 @@ filter: invert(20%) sepia(100%) saturate(2518%) hue-rotate(353deg) brightness(93
 
 .widthFreeExpand {width: unset;}
 
+#openai_api-presets {
+    display: flex;
+    flex-direction: row;
+    column-gap: 10px;
+}
 
+#openai_api-presets > div {
+    flex: 1;
+}
 
+#openai_api-presets select {
+    width: 100%;
+}
+
+#openai_logit_bias_text, .openai_logit_bias_range_block {
+    flex: 1;
+}
+
+.openai_logit_bias_form .range-block-counter {
+    margin-top: 0px;
+}
+
+.openai_logit_bias_form {
+    display: flex;
+    flex-direction: row;
+    column-gap: 10px;
+    align-items: center;
+}
+
+.openai_logit_bias_list {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    column-gap: 10px;
+    flex-wrap: wrap;
+}
+
+.openai_logit_bias_list_item .separator {
+    margin: 0 3px;
+    display: block;
+    font-weight: 700;
+    font-size: 1.2em;
+}
+
+.openai_logit_bias_list_item {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    background-color: var(--ivory);
+    color: var(--black100);
+    font-weight: 500;
+    border-radius: 20px;
+    min-height: fit-content;
+    padding: 3px 5px;
+}
+
+.openai_restorable {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.openai_restorable .right_menu_button img {
+    height: 20px;
+}
+
+.openai_preset_buttons {
+    display: flex;
+    justify-content: space-evenly;
+    flex-direction: row;
+}
 
 /* ---------- @media queries must always go at the bottom ------------*/
 
@@ -2977,7 +3058,7 @@ filter: invert(20%) sepia(100%) saturate(2518%) hue-rotate(353deg) brightness(93
     .mes-text {padding-right: 25px;}
 
     #right-nav-panel {        
-        height: calc(100vh - 70px);
+        height: calc(100svh - 70px);
         min-width: 0px;
         width: calc(100vw - 10px);
         left: 5px !important;
