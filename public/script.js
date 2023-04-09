@@ -588,7 +588,7 @@ function printCharacters() {
     characters.forEach(function (item, i, arr) {
         let this_avatar = default_avatar;
         if (item.avatar != "none") {
-            this_avatar = `/thumbnail?type=avatar&file=${encodeURIComponent(item.avatar)}&${Date.now()}`;
+            this_avatar = "characters/" + item.avatar + "#" + Date.now();
         } //RossAscends: changed 'prepend' to 'append' to make alphabetical sorting display correctly.
         $("#rm_print_characters_block").append(
 
@@ -874,9 +874,9 @@ function addOneMessage(mes, type = "normal", insertAfter = null) {
             avatarImg = system_avatar;
         } else {
             if (characters[this_chid].avatar != "none") {
-                avatarImg = `/thumbnail?type=avatar&file=${encodeURIComponent(characters[this_chid].avatar)}`;
+                avatarImg = "characters/" + characters[this_chid].avatar;
                 if (is_mes_reload_avatar !== false) {
-                    avatarImg += "&" + is_mes_reload_avatar;
+                    avatarImg += "#" + is_mes_reload_avatar;
                 }
             } else {
                 avatarImg = default_avatar;
@@ -2726,9 +2726,9 @@ function select_selected_character(chid) {
     //$("#avatar_div").css("display", "none");
     var this_avatar = default_avatar;
     if (characters[chid].avatar != "none") {
-        this_avatar = "/thumbnail?type=avatar&file=" + encodeURIComponent(characters[chid].avatar);
+        this_avatar = "characters/" + characters[chid].avatar;
     }
-    $("#avatar_load_preview").attr("src", this_avatar + "&" + Date.now());
+    $("#avatar_load_preview").attr("src", this_avatar + "#" + Date.now());
     $("#name_div").css("display", "none");
 
     $("#form_create").attr("actiontype", "editcharacter");
