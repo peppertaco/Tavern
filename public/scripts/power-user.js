@@ -161,6 +161,11 @@ $(document).ready(() => {
         applyAvatarStyle();
     });
 	
+    $("#hide-chat-checkbox").change(function () {
+      var sheld = document.getElementById("sheld");
+      sheld.style.display = this.checked ? "none" : "grid";
+    });		
+	
 $("#ui1-style-checkbox").change(function () {
   if (this.checked) {
 	$(".expression-holder").css("max-width", "100%");  
