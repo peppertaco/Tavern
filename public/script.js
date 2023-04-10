@@ -1875,7 +1875,7 @@ function saveReply(type, getMessage, this_mes_is_name) {
             console.log('entering chat update for groups');
             let avatarImg = 'img/ai4.png';
             if (characters[this_chid].avatar != 'none') {
-                avatarImg = `/thumbnail?type=avatar&file=${encodeURIComponent(characters[this_chid].avatar)}&${Date.now()}`;
+                avatarImg = `characters/${characters[this_chid].avatar}#${Date.now()}`;
             }
             chat[chat.length - 1]['is_name'] = true;
             chat[chat.length - 1]['force_avatar'] = avatarImg;
