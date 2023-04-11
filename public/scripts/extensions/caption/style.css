@@ -5,7 +5,7 @@
     margin: 0;
     padding: 1px;
     background: no-repeat;
-    background-size: 26px auto;
+    background-size: 24px 24px;
     background-position: center center;
     outline: none;
     border: none;
@@ -21,16 +21,4 @@
 
 #img_form {
     display: none;
-}
-
-.spin {
-    animation-name: spin;
-    animation-duration: 2000ms;
-    animation-iteration-count: infinite;
-    animation-timing-function: linear;
-}
-
-@keyframes spin {
-    from {transform:rotate(0deg);}
-    to {transform:rotate(360deg);}
 }
