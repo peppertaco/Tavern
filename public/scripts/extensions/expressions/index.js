@@ -1,30 +1,20 @@
-import { getContext, getApiUrl } from "../../extensions.js";
-import { urlContentToDataUri } from "../../utils.js";
+import { saveSettingsDebounced } from "../../../script.js";
+import { getContext, getApiUrl, modules, extension_settings } from "../../extensions.js";
 export { MODULE_NAME };
 
 const MODULE_NAME = 'expressions';
-const DEFAULT_KEY = 'extensions_expressions_showDefault';
 const UPDATE_INTERVAL = 1000;
+const DEFAULT_EXPRESSIONS = ['anger', 'fear', 'joy', 'love', 'sadness', 'surprise'];
 
 let expressionsList = null;
 let lastCharacter = undefined;
 let lastMessage = null;
 let inApiCall = false;
-let showDefault = false;
-
-function loadSettings() {
-    showDefault = localStorage.getItem(DEFAULT_KEY) == 'true';
-    $('#expressions_show_default').prop('checked', showDefault).trigger('input');
-}
-
-function saveSettings() {
-    localStorage.setItem(DEFAULT_KEY, showDefault.toString());
-}
 
 function onExpressionsShowDefaultInput() {
     const value = $(this).prop('checked');
-    showDefault = value;
-    saveSettings();
+    extension_settings.expressions.showDefault = value;
+    saveSettingsDebounced();
 
     const existingImageSrc = $('img.expression').prop('src');
     if (existingImageSrc !== undefined) {                      //if we have an image in src
@@ -65,6 +55,16 @@ async function moduleWorker() {
     if (lastCharacter !== context.characterId) {
         removeExpression();
         validateImages();
+    }
+
+    if (!modules.includes('classify')) {
+        $('.expression_settings').show();
+        $('.expression_settings .offline_mode').css('display', 'block');
+        lastCharacter = context.characterId;
+        return;
+    }
+    else {
+        $('.expression_settings .offline_mode').css('display', 'none');
     }
 
     // check if last message changed
@@ -112,6 +112,7 @@ async function moduleWorker() {
 function removeExpression() {
     lastMessage = null;
     $('img.expression').prop('src', '');
+    $('img.expression').removeClass('default');
     $('.expression_settings').hide();
 }
 
@@ -128,6 +129,7 @@ async function validateImages() {
     $('#image_list').empty();
 
     if (!context.characterId) {
+        imagesValidating = false;
         return;
     }
 
@@ -139,17 +141,31 @@ async function validateImages() {
         image.width = '0px';
         image.height = '0px';
         image.onload = function () {
-            $('#image_list').append(`<li id="${item}" class="success">${item} - OK</li>`);
+            $('#image_list').append(getListItem(item, image.src, 'success'));
         }
         image.onerror = function () {
-            $('#image_list').append(`<li id="${item}" class="failure">${item} - Missing</li>`);
+            $('#image_list').append(getListItem(item, '/img/No-Image-Placeholder.svg', 'failure'));
         }
         $('#image_list').prepend(image);
     });
     imagesValidating = false;
 }
 
+function getListItem(item, imageSrc, textClass) {
+    return `
+        <div id="${item}" class="expression_list_item">
+            <span class="expression_list_title ${textClass}">${item}</span>
+            <img class="expression_list_image" src="${imageSrc}" />
+        </div>
+    `;
+}
+
 async function getExpressionsList() {
+    // get something for offline mode (6 default images)
+    if (!modules.includes('classify')) {
+        return DEFAULT_EXPRESSIONS;
+    }
+
     if (Array.isArray(expressionsList)) {
         return expressionsList;
     }
@@ -175,21 +191,37 @@ async function getExpressionsList() {
     }
 }
 
-async function setExpression(character, expression) {
+async function setExpression(character, expression, force) {
     const filename = `${expression}.png`;
-    const debugImageStatus = document.querySelector(`#image_list li[id="${filename}"]`);
+    const debugImageStatus = document.querySelector(`#image_list div[id="${filename}"] span`);
 
-    if (debugImageStatus && !debugImageStatus.classList.contains('failure')) {
+    if (force || (debugImageStatus && !debugImageStatus.classList.contains('failure'))) {
         //console.log('setting expression from character images folder');
         const imgUrl = `/characters/${character}/${filename}`;
         $('img.expression').prop('src', imgUrl);
+        $('img.expression').removeClass('default');
     } else {
-        if (showDefault) {
+        if (extension_settings.expressions.showDefault) {
             //console.log('no character images, trying default expressions');
             const defImgUrl = `/img/default-expressions/${filename}`;
             //console.log(defImgUrl);
             $('img.expression').prop('src', defImgUrl);
+            $('img.expression').addClass('default');
         }
+    }
+}
+
+function onClickExpressionImage() {
+    // online mode doesn't need force set
+    if (modules.includes('classify')) {
+        return;
+    }
+
+    const context = getContext();
+    const expression = $(this).attr('id').replace('.png', '');
+
+    if ($(this).find('.failure').length === 0) {
+        setExpression(context.name2, expression, true);
     }
 }
 
@@ -208,7 +240,8 @@ async function setExpression(character, expression) {
                 <div class="inline-drawer-icon down"></div>
             </div>
             <div class="inline-drawer-content">
-                <ul id="image_list"></ul>
+                <p class="offline_mode">You are in offline mode. Click on the image below to set the expression.</p>
+                <div id="image_list"></div>
                 <p class="hint"><b>Hint:</b> <i>Create new folder in the <b>public/characters/</b> folder and name it as the name of the character. Put PNG images with expressions there.</i></p>
                 </div>
             </div>
@@ -217,11 +250,12 @@ async function setExpression(character, expression) {
         `;
         $('#extensions_settings').append(html);
         $('#expressions_show_default').on('input', onExpressionsShowDefaultInput);
+        $('#expressions_show_default').prop('checked', extension_settings.expressions.showDefault).trigger('input');
+        $(document).on('click', '.expression_list_item', onClickExpressionImage);
         $('.expression_settings').hide();
     }
 
     addExpressionImage();
     addSettings();
-    loadSettings();
     setInterval(moduleWorker, UPDATE_INTERVAL);
 })();
