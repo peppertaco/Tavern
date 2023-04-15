@@ -14,7 +14,7 @@
     padding-left: 10px;
     padding-right: 10px;
     text-align: center;
-    filter: drop-shadow(2px 2px 2px #51515199);
+	filter: drop-shadow(-20px 15px 25px grey);
     transition: 500ms;
     z-index: 3;
 }
@@ -23,6 +23,7 @@ img.expression {
     max-width: 100%;
     max-height: 90vh;
     vertical-align: bottom;
+    object-fit: cover;
 }
 
 img.expression.default {
@@ -107,4 +108,34 @@ img.expression.default {
     div.expression {
         display: none;
     }
+}
+
+@keyframes moveUpDown {
+  0% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(5px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  25% {
+    transform: scale(1.02) rotate(-1deg);
+  }
+  50% {
+    transform: scale(1) rotate(0deg);
+  }
+  75% {
+    transform: scale(1.02) rotate(1deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
 }
