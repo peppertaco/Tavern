@@ -1,4 +1,4 @@
-This fork includes temporary code for changing the UI, as well as temporary UI components, and nothing more.
+This fork includes temporary code and UI components for changing the UI to Waifu mode, and nothing more.
 
 ![Animation](https://user-images.githubusercontent.com/123547699/232253201-e5e022d6-0c30-4052-93be-1fe2e301a902.gif)
 
