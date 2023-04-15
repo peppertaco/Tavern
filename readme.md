@@ -1,3 +1,8 @@
+This fork includes temporary code for changing the UI, as well as temporary UI components, and nothing more.
+
+![Animation](https://user-images.githubusercontent.com/123547699/232253201-e5e022d6-0c30-4052-93be-1fe2e301a902.gif)
+
+
 # SillyTavern
 ## Based on a fork of TavernAI 1.2.8
 ### Brought to you by Cohee and RossAscends
