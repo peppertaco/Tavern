@@ -33,36 +33,54 @@ const cached_bots = {};
 
 const logger = console;
 
-const user_agent = "Mozilla/5.0 (X11; Linux x86_64; rv:102.0) Gecko/20100101 Firefox/102.0";
+const user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36";
+
+function extractFormKey(html) {
+    const scriptRegex = /<script>if\(.+\)throw new Error;(.+)<\/script>/;
+    const scriptText = html.match(scriptRegex)[1];
+    const keyRegex = /var .="([0-9a-f]+)",/;
+    const keyText = scriptText.match(keyRegex)[1];
+    const cipherRegex = /.\[(\d+)\]=.\[(\d+)\]/g;
+    const cipherPairs = Array.from(scriptText.matchAll(cipherRegex));
+
+    const formKeyList = new Array(cipherPairs.length).fill("");
+    for (const pair of cipherPairs) {
+        const [formKeyIndex, keyIndex] = pair.slice(1).map(Number);
+        formKeyList[formKeyIndex] = keyText[keyIndex];
+    }
+    const formKey = formKeyList.join("");
+
+    return formKey;
+}
 
 
-function queryScrambler() {
-        function a(e, t) {
-            var r = (65535 & e) + (65535 & t);
-            return (e >> 16) + (t >> 16) + (r >> 16) << 16 | 65535 & r
-        }
-        function s(e, t, r, n, i, s) {
-            var o;
-            return a((o = a(a(t, e), a(n, s))) << i | o >>> 32 - i, r)
-        }
-        function o(e, t, r, n, i, a, o) {
-            return s(t & r | ~t & n, e, t, i, a, o)
-        }
-        function l(e, t, r, n, i, a, o) {
-            return s(t & n | r & ~n, e, t, i, a, o)
-        }
-        function u(e, t, r, n, i, a, o) {
-            return s(t ^ r ^ n, e, t, i, a, o)
-        }
-        function c(e, t, r, n, i, a, o) {
-            return s(r ^ (t | ~n), e, t, i, a, o)
-        }
-        function d(e, t) {
-            e[t >> 5] |= 128 << t % 32,
+function md5() {
+    function a(e, t) {
+        var r = (65535 & e) + (65535 & t);
+        return (e >> 16) + (t >> 16) + (r >> 16) << 16 | 65535 & r
+    }
+    function s(e, t, r, n, i, s) {
+        var o;
+        return a((o = a(a(t, e), a(n, s))) << i | o >>> 32 - i, r)
+    }
+    function o(e, t, r, n, i, a, o) {
+        return s(t & r | ~t & n, e, t, i, a, o)
+    }
+    function l(e, t, r, n, i, a, o) {
+        return s(t & n | r & ~n, e, t, i, a, o)
+    }
+    function u(e, t, r, n, i, a, o) {
+        return s(t ^ r ^ n, e, t, i, a, o)
+    }
+    function c(e, t, r, n, i, a, o) {
+        return s(r ^ (t | ~n), e, t, i, a, o)
+    }
+    function d(e, t) {
+        e[t >> 5] |= 128 << t % 32,
             e[(t + 64 >>> 9 << 4) + 14] = t;
-            var r, n, i, s, d, f = 1732584193, h = -271733879, p = -1732584194, _ = 271733878;
-            for (r = 0; r < e.length; r += 16)
-                n = f,
+        var r, n, i, s, d, f = 1732584193, h = -271733879, p = -1732584194, _ = 271733878;
+        for (r = 0; r < e.length; r += 16)
+            n = f,
                 i = h,
                 s = p,
                 d = _,
@@ -134,49 +152,49 @@ function queryScrambler() {
                 h = a(h, i),
                 p = a(p, s),
                 _ = a(_, d);
-            return [f, h, p, _]
-        }
-        function f(e) {
-            var t, r = "", n = 32 * e.length;
-            for (t = 0; t < n; t += 8)
-                r += String.fromCharCode(e[t >> 5] >>> t % 32 & 255);
-            return r
-        }
-        function h(e) {
-            var t, r = [];
-            for (t = 0,
+        return [f, h, p, _]
+    }
+    function f(e) {
+        var t, r = "", n = 32 * e.length;
+        for (t = 0; t < n; t += 8)
+            r += String.fromCharCode(e[t >> 5] >>> t % 32 & 255);
+        return r
+    }
+    function h(e) {
+        var t, r = [];
+        for (t = 0,
             r[(e.length >> 2) - 1] = void 0; t < r.length; t += 1)
-                r[t] = 0;
-            var n = 8 * e.length;
-            for (t = 0; t < n; t += 8)
-                r[t >> 5] |= (255 & e.charCodeAt(t / 8)) << t % 32;
-            return r
-        }
-        function p(e) {
-            var t, r, n = "0123456789abcdef", i = "";
-            for (r = 0; r < e.length; r += 1)
-                i += n.charAt((t = e.charCodeAt(r)) >>> 4 & 15) + n.charAt(15 & t);
-            return i
-        }
-        function _(e) {
-            return unescape(encodeURIComponent(e))
-        }
-        function v(e) {
-            var t;
-            return f(d(h(t = _(e)), 8 * t.length))
-        }
-        function g(e, t) {
-            return function(e, t) {
-                var r, n, i = h(e), a = [], s = [];
-                for (a[15] = s[15] = void 0,
+            r[t] = 0;
+        var n = 8 * e.length;
+        for (t = 0; t < n; t += 8)
+            r[t >> 5] |= (255 & e.charCodeAt(t / 8)) << t % 32;
+        return r
+    }
+    function p(e) {
+        var t, r, n = "0123456789abcdef", i = "";
+        for (r = 0; r < e.length; r += 1)
+            i += n.charAt((t = e.charCodeAt(r)) >>> 4 & 15) + n.charAt(15 & t);
+        return i
+    }
+    function _(e) {
+        return unescape(encodeURIComponent(e))
+    }
+    function v(e) {
+        var t;
+        return f(d(h(t = _(e)), 8 * t.length))
+    }
+    function g(e, t) {
+        return function (e, t) {
+            var r, n, i = h(e), a = [], s = [];
+            for (a[15] = s[15] = void 0,
                 i.length > 16 && (i = d(i, 8 * e.length)),
                 r = 0; r < 16; r += 1)
-                    a[r] = 909522486 ^ i[r],
+                a[r] = 909522486 ^ i[r],
                     s[r] = 1549556828 ^ i[r];
-                return n = d(a.concat(h(t)), 512 + 8 * t.length),
+            return n = d(a.concat(h(t)), 512 + 8 * t.length),
                 f(d(s.concat(n), 640))
-            }(_(e), _(t))
-        }
+        }(_(e), _(t))
+    }
     function m(e, t, r) {
         return t ? r ? g(t, e) : p(g(t, e)) : r ? v(e) : p(v(e))
     }
@@ -241,6 +259,7 @@ class Client {
     constructor(auto_reconnect = false, use_cached_bots = false) {
         this.auto_reconnect = auto_reconnect;
         this.use_cached_bots = use_cached_bots;
+        this.abortController = new AbortController();
     }
 
     async init(token, proxy = null) {
@@ -249,6 +268,7 @@ class Client {
             timeout: 60000,
             httpAgent: new http.Agent({ keepAlive: true }),
             httpsAgent: new https.Agent({ keepAlive: true }),
+            signal: this.abortController.signal,
         });
         if (proxy) {
             this.session.defaults.proxy = {
@@ -264,18 +284,18 @@ class Client {
             "Origin": "https://poe.com",
             "Cookie": cookies,
         };
-        this.ws_domain = `tch${Math.floor(Math.random() * 1e6)}`;
         this.session.defaults.headers.common = this.headers;
         this.next_data = await this.get_next_data();
         this.channel = await this.get_channel_data();
-        await this.connect_ws();
         this.bots = await this.get_bots();
         this.bot_names = this.get_bot_names();
+        this.ws_domain = `tch${Math.floor(Math.random() * 1e6)}`;
         this.gql_headers = {
             "poe-formkey": this.formkey,
             "poe-tchannel": this.channel["channel"],
             ...this.headers,
         };
+        await this.connect_ws();
         await this.subscribe();
     }
 
@@ -287,7 +307,7 @@ class Client {
         const jsonText = jsonRegex.exec(r.data)[1];
         const nextData = JSON.parse(jsonText);
 
-        this.formkey = nextData.props.formkey;
+        this.formkey = extractFormKey(r.data);
         this.viewer = nextData.props.pageProps.payload.viewer;
 
         return nextData;
@@ -299,23 +319,28 @@ class Client {
             throw new Error('Invalid token.');
         }
         const botList = viewer.availableBots;
-
+        const retries = 2;
         const bots = {};
         for (const bot of botList.filter(x => x.deletionState == 'not_deleted')) {
-            const url = `https://poe.com/_next/data/${this.next_data.buildId}/${bot.displayName}.json`;
-            let r;
-            
-            if (this.use_cached_bots && cached_bots[url]) {
-                r = cached_bots[url];
+            try {
+                const url = `https://poe.com/_next/data/${this.next_data.buildId}/${bot.displayName}.json`;
+                let r;
+    
+                if (this.use_cached_bots && cached_bots[url]) {
+                    r = cached_bots[url];
+                }
+                else {
+                    logger.info(`Downloading ${url}`);
+                    r = await request_with_retries(() => this.session.get(url), retries);
+                    cached_bots[url] = r;
+                }
+    
+                const chatData = r.data.pageProps.payload.chatOfBotDisplayName;
+                bots[chatData.defaultBotObject.nickname] = chatData;
             }
-            else {
-                logger.info(`Downloading ${url}`);
-                r = await request_with_retries(() => this.session.get(url));
-                cached_bots[url] = r;
+            catch {
+                console.log(`Could not load bot: ${bot.displayName}`);
             }
-
-            const chatData = r.data.pageProps.payload.chatOfBotDisplayName;
-            bots[chatData.defaultBotObject.nickname] = chatData;
         }
 
         return bots;
@@ -335,7 +360,6 @@ class Client {
         const r = await request_with_retries(() => this.session.get(this.settings_url));
         const data = r.data;
 
-        this.formkey = data.formkey;
         return data.tchannelData;
     }
 
@@ -353,7 +377,8 @@ class Client {
             if (queryDisplayName) payload['queryName'] = queryDisplayName;
             const scramblePayload = JSON.stringify(payload);
             const _headers = this.gql_headers;
-            _headers['poe-tag-id'] = queryScrambler()(scramblePayload + this.formkey + "WpuLMiXEKKE98j56k");
+            _headers['poe-tag-id'] = md5()(scramblePayload + this.formkey + "WpuLMiXEKKE98j56k");
+            _headers['poe-formkey'] = this.formkey;
             const r = await request_with_retries(() => this.session.post(this.gql_url, payload, { headers: this.gql_headers }));
             if (!r.data.data) {
                 logger.warn(`${queryName} returned an error: ${data.errors[0].message} | Retrying (${i + 1}/20)`);
@@ -385,7 +410,7 @@ class Client {
                 },
             ]
         },
-        'subscriptionsMutation');
+            'subscriptionsMutation');
     }
 
     ws_run_thread() {
@@ -452,7 +477,7 @@ class Client {
             for (const message_str of data["messages"]) {
                 const message_data = JSON.parse(message_str);
 
-                if (message_data["message_type"] != "subscriptionUpdate"){ 
+                if (message_data["message_type"] != "subscriptionUpdate") {
                     continue;
                 }
 
@@ -461,7 +486,7 @@ class Client {
                 if (!message) {
                     return;
                 }
-        
+
                 const copiedDict = Object.assign({}, this.active_messages);
                 for (const [key, value] of Object.entries(copiedDict)) {
                     //add the message to the appropriate queue
@@ -469,7 +494,7 @@ class Client {
                         this.message_queues[key].push(message);
                         return;
                     }
-        
+
                     //indicate that the response id is tied to the human message id
                     else if (key !== "pending" && value === null && message["state"] !== "complete") {
                         this.active_messages[key] = message["messageId"];
@@ -526,6 +551,8 @@ class Client {
         let messageId;
         while (true) {
             try {
+                this.abortController.signal.throwIfAborted();
+
                 const message = this.message_queues[humanMessageId].shift();
                 if (!message) {
                     await new Promise(resolve => setTimeout(() => resolve(), 1000));
