@@ -4,17 +4,18 @@ import {
     characters,
     callPopup,
     token,
+    getStatus,
 } from "../script.js";
-import { delay } from "./utils.js";
-
 
 export {
     loadPowerUserSettings,
     collapseNewlines,
     playMessageSound,
     sortCharactersList,
+    fixMarkdown,
     power_user,
     pygmalion_options,
+    tokenizers,
 };
 
 const avatar_styles = {
@@ -38,13 +39,23 @@ const pygmalion_options = {
     ENABLED: 1,
 }
 
+const tokenizers = {
+    NONE: 0,
+    GPT3: 1,
+    CLASSIC: 2,
+    LLAMA: 3,
+}
+
 let power_user = {
+    tokenizer: tokenizers.CLASSIC,
     collapse_newlines: false,
     pygmalion_formatting: pygmalion_options.AUTO,
     pin_examples: false,
     disable_description_formatting: false,
     disable_scenario_formatting: false,
     disable_personality_formatting: false,
+    disable_examples_formatting: false,
+    disable_start_formatting: false,
     always_force_name2: false,
     multigen: false,
     multigen_first_chunk: 50,
@@ -56,18 +67,28 @@ let power_user = {
     sheld_width: sheld_width.DEFAULT,
     play_message_sound: false,
     play_sound_unfocused: true,
+    auto_save_msg_edits: false,
     sort_field: 'name',
     sort_order: 'asc',
+    sort_rule: null,
     font_scale: 1,
     blur_strength: 10,
+    shadow_width: 2,
 
     main_text_color: `${getComputedStyle(document.documentElement).getPropertyValue('--SmartThemeBodyColor').trim()}`,
     italics_text_color: `${getComputedStyle(document.documentElement).getPropertyValue('--SmartThemeEmColor').trim()}`,
+    quote_text_color: `${getComputedStyle(document.documentElement).getPropertyValue('--SmartThemeQuoteColor').trim()}`,
     fastui_bg_color: `${getComputedStyle(document.documentElement).getPropertyValue('--SmartThemeFastUIBGColor').trim()}`,
     blur_tint_color: `${getComputedStyle(document.documentElement).getPropertyValue('--SmartThemeBlurTintColor').trim()}`,
+    shadow_color: `${getComputedStyle(document.documentElement).getPropertyValue('--SmartThemeShadowColor').trim()}`,
 
     waifuMode: false,
+    movingUI: false,
+    noShadows: false,
     theme: 'Default (Dark)',
+
+    auto_scroll_chat_to_bottom: true,
+    auto_fix_generated_markdown: true,
 };
 
 let themes = [];
@@ -81,17 +102,19 @@ const storage_keys = {
 
     main_text_color: "TavernAI_main_text_color",
     italics_text_color: "TavernAI_italics_text_color",
+    quote_text_color: "TavernAI_quote_text_color",
     fastui_bg_color: "TavernAI_fastui_bg_color",
     blur_tint_color: "TavernAI_blur_tint_color",
     blur_strength: "TavernAI_blur_strength",
+    shadow_color: "TavernAI_shadow_color",
+    shadow_width: "TavernAI_shadow_width",
+
 
     waifuMode: "TavernAI_waifuMode",
+    movingUI: "TavernAI_movingUI",
+    noShadows: "TavernAI_noShadows",
 };
 
-const chat = document.getElementById('chat');
-const chatTransition = window.getComputedStyle(chat).transition;
-
-//Updated at the bottom of this script document based on 'focus' and 'blur' events
 let browser_has_focus = true;
 
 function playMessageSound() {
@@ -114,6 +137,37 @@ function collapseNewlines(x) {
     return x.replaceAll(/\n+/g, "\n");
 }
 
+function fixMarkdown(text) {
+    // fix formatting problems in markdown
+    // e.g.:
+    // "^example * text*\n" -> "^example *text*\n"
+    // "^*example * text\n" -> "^*example* text\n"
+    // "^example *text *\n" -> "^example *text*\n"
+    // "^* example * text\n" -> "^*example* text\n"
+    // take note that the side you move the asterisk depends on where its pairing is
+    // i.e. both of the following strings have the same broken asterisk ' * ', but you move the first to the left and the second to the right, to match the non-broken asterisk "^example * text*\n" "^*example * text\n"
+    // and you HAVE to handle the cases where multiple pairs of asterisks exist in the same line
+    // i.e. "^example * text* * harder problem *\n" -> "^example *text* *harder problem*\n"
+
+    // Find pairs of formatting characters and capture the text in between them
+    const format = /(\*|_|~){1,2}([\s\S]*?)\1{1,2}/gm;
+    let matches = [];
+    let match;
+    while ((match = format.exec(text)) !== null) {
+        matches.push(match);
+    }
+
+    // Iterate through the matches and replace adjacent spaces immediately beside formatting characters
+    let newText = text;
+    for (let i = matches.length - 1; i >= 0; i--) {
+        let matchText = matches[i][0];
+        let replacementText = matchText.replace(/(\*|_|~)(\s+)|(\s+)(\*|_|~)/g, '$1$4');
+        newText = newText.slice(0, matches[i].index) + replacementText + newText.slice(matches[i].index + matchText.length);
+    }
+
+    return newText;
+}
+
 function switchUiMode() {
     const fastUi = localStorage.getItem(storage_keys.fast_ui_mode);
     power_user.fast_ui_mode = fastUi === null ? true : fastUi == "true";
@@ -124,6 +178,20 @@ function switchWaifuMode() {
     const waifuMode = localStorage.getItem(storage_keys.waifuMode);
     power_user.waifuMode = waifuMode === null ? false : waifuMode == "true";
     $("body").toggleClass("waifuMode", power_user.waifuMode);
+    scrollChatToBottom();
+}
+
+function switchMovingUI() {
+    const movingUI = localStorage.getItem(storage_keys.movingUI);
+    power_user.movingUI = movingUI === null ? false : movingUI == "true";
+    $("body").toggleClass("movingUI", power_user.movingUI);
+    scrollChatToBottom();
+}
+
+function noShadows() {
+    const noShadows = localStorage.getItem(storage_keys.noShadows);
+    power_user.noShadows = noShadows === null ? false : noShadows == "true";
+    $("body").toggleClass("noShadows", power_user.noShadows);
     scrollChatToBottom();
 }
 
@@ -149,71 +217,44 @@ function applySheldWidth() {
 }
 
 async function applyThemeColor(type) {
-    const $MainTextColorPicker = document.getElementById('main-text-color-picker');
-    const $ItalicsTextColorPicker = document.getElementById('italics-color-picker');
-    const $FastUIBGColorPicker = document.getElementById('fastui-bg-color-picker');
-    const $BlurTintColorPicker = document.getElementById('blur-tint-color-picker');
-
-    // temporarily unset transition from chat to not make the browser calculate the animation
-    chat.style.transition = 'unset';
-
     if (type === 'main') {
         document.documentElement.style.setProperty('--SmartThemeBodyColor', power_user.main_text_color);
-
     }
-
     if (type === 'italics') {
         document.documentElement.style.setProperty('--SmartThemeEmColor', power_user.italics_text_color);
-
     }
-
+    if (type === 'quote') {
+        document.documentElement.style.setProperty('--SmartThemeQuoteColor', power_user.quote_text_color);
+    }
     if (type === 'fastUIBG') {
         document.documentElement.style.setProperty('--SmartThemeFastUIBGColor', power_user.fastui_bg_color);
-
     }
-
     if (type === 'blurTint') {
         document.documentElement.style.setProperty('--SmartThemeBlurTintColor', power_user.blur_tint_color);
-
     }
-
-    // a small delay to let the browser do the layout redraw
-    await delay(1);
-    // set transition back to chat
-    chat.style.transition = chatTransition;
+    if (type === 'shadow') {
+        document.documentElement.style.setProperty('--SmartThemeShadowColor', power_user.shadow_color);
+    }
 }
 
 async function applyBlurStrength() {
     power_user.blur_strength = Number(localStorage.getItem(storage_keys.blur_strength) ?? 1);
-
-    // temporarily unset transition from chat to not make the browser calculate the animation
-    chat.style.transition = 'unset';
-
-    // now apply the blur strength to the document
     document.documentElement.style.setProperty('--blurStrength', power_user.blur_strength);
     $("#blur_strength_counter").text(power_user.blur_strength);
 
-    // a small delay to let the browser do the layout redraw
-    await delay(1);
-    // set transition back to chat
-    chat.style.transition = chatTransition;
 }
 
+async function applyShadowWidth() {
+    power_user.shadow_width = Number(localStorage.getItem(storage_keys.shadow_width) ?? 2);
+    document.documentElement.style.setProperty('--shadowWidth', power_user.shadow_width);
+    $("#shadow_width_counter").text(power_user.shadow_width);
+
+}
 
 async function applyFontScale() {
     power_user.font_scale = Number(localStorage.getItem(storage_keys.font_scale) ?? 1);
-
-    // temporarily unset transition from chat to not make the browser calculate the animation
-    chat.style.transition = 'unset';
-
-    // now apply the font scale to the document
     document.documentElement.style.setProperty('--fontScale', power_user.font_scale);
     $("#font_scale_counter").text(power_user.font_scale);
-
-    // a small delay to let the browser do the layout redraw
-    await delay(1);
-    // set transition back to chat
-    chat.style.transition = chatTransition;
 }
 
 async function applyTheme(name) {
@@ -226,13 +267,22 @@ async function applyTheme(name) {
     const themeProperties = [
         { key: 'main_text_color', selector: '#main-text-color-picker', type: 'main' },
         { key: 'italics_text_color', selector: '#italics-color-picker', type: 'italics' },
+        { key: 'quote_text_color', selector: '#quote-color-picker', type: 'quote' },
         { key: 'fastui_bg_color', selector: '#fastui-bg-color-picker', type: 'fastUIBG' },
         { key: 'blur_tint_color', selector: '#blur-tint-color-picker', type: 'blurTint' },
+        { key: 'shadow_color', selector: '#shadow-color-picker', type: 'shadow' },
         {
             key: 'blur_strength',
             action: async () => {
                 localStorage.setItem(storage_keys.blur_strength, power_user.blur_strength);
                 await applyBlurStrength();
+            }
+        },
+        {
+            key: 'shadow_width',
+            action: async () => {
+                localStorage.setItem(storage_keys.shadow_width, power_user.shadow_width);
+                await applyShadowWidth();
             }
         }
     ];
@@ -255,8 +305,11 @@ applyThemeColor();
 applySheldWidth();
 applyAvatarStyle();
 applyBlurStrength();
+applyShadowWidth();
 applyChatDisplay();
 switchWaifuMode()
+switchMovingUI();
+noShadows();
 
 function loadPowerUserSettings(settings, data) {
     // Load from settings.json
@@ -271,42 +324,60 @@ function loadPowerUserSettings(settings, data) {
     // These are still local storage
     const fastUi = localStorage.getItem(storage_keys.fast_ui_mode);
     const waifuMode = localStorage.getItem(storage_keys.waifuMode);
+    const movingUI = localStorage.getItem(storage_keys.movingUI);
+    const noShadows = localStorage.getItem(storage_keys.noShadows);
     power_user.fast_ui_mode = fastUi === null ? true : fastUi == "true";
     power_user.waifuMode = waifuMode === null ? false : waifuMode == "true";
+    power_user.movingUI = movingUI === null ? false : movingUI == "true";
+    power_user.noShadows = noShadows === null ? false : noShadows == "true";
     power_user.avatar_style = Number(localStorage.getItem(storage_keys.avatar_style) ?? avatar_styles.ROUND);
     power_user.chat_display = Number(localStorage.getItem(storage_keys.chat_display) ?? chat_styles.DEFAULT);
     power_user.sheld_width = Number(localStorage.getItem(storage_keys.sheld_width) ?? sheld_width.DEFAULT);
     power_user.font_scale = Number(localStorage.getItem(storage_keys.font_scale) ?? 1);
     power_user.blur_strength = Number(localStorage.getItem(storage_keys.blur_strength) ?? 10);
 
-    $(`#pygmalion_formatting option[value=${power_user.pygmalion_formatting}]`).prop("checked", true);
+    $('#auto_fix_generated_markdown').prop("checked", power_user.auto_fix_generated_markdown);
+    $('#auto_scroll_chat_to_bottom').prop("checked", power_user.auto_scroll_chat_to_bottom);
+    $(`#tokenizer option[value="${power_user.tokenizer}"]`).attr('selected', true);
+    $(`#pygmalion_formatting option[value=${power_user.pygmalion_formatting}]`).attr("selected", true);
     $("#collapse-newlines-checkbox").prop("checked", power_user.collapse_newlines);
     $("#pin-examples-checkbox").prop("checked", power_user.pin_examples);
     $("#disable-description-formatting-checkbox").prop("checked", power_user.disable_description_formatting);
     $("#disable-scenario-formatting-checkbox").prop("checked", power_user.disable_scenario_formatting);
     $("#disable-personality-formatting-checkbox").prop("checked", power_user.disable_personality_formatting);
     $("#always-force-name2-checkbox").prop("checked", power_user.always_force_name2);
+    $("#disable-examples-formatting-checkbox").prop("checked", power_user.disable_examples_formatting);
+    $('#disable-start-formatting-checkbox').prop("checked", power_user.disable_start_formatting);
     $("#custom_chat_separator").val(power_user.custom_chat_separator);
     $("#fast_ui_mode").prop("checked", power_user.fast_ui_mode);
     $("#waifuMode").prop("checked", power_user.waifuMode);
+    $("#movingUImode").prop("checked", power_user.movingUI);
+    $("#noShadowsmode").prop("checked", power_user.noShadows);
     $("#multigen").prop("checked", power_user.multigen);
     $("#multigen_first_chunk").val(power_user.multigen_first_chunk);
     $("#multigen_next_chunks").val(power_user.multigen_next_chunks);
     $("#play_message_sound").prop("checked", power_user.play_message_sound);
     $("#play_sound_unfocused").prop("checked", power_user.play_sound_unfocused);
+    $("#auto_save_msg_edits").prop("checked", power_user.auto_save_msg_edits);
     $(`input[name="avatar_style"][value="${power_user.avatar_style}"]`).prop("checked", true);
     $(`input[name="chat_display"][value="${power_user.chat_display}"]`).prop("checked", true);
     $(`input[name="sheld_width"][value="${power_user.sheld_width}"]`).prop("checked", true);
+
     $("#font_scale").val(power_user.font_scale);
     $("#font_scale_counter").text(power_user.font_scale);
 
     $("#blur_strength").val(power_user.blur_strength);
     $("#blur_strength_counter").text(power_user.blur_strength);
 
+    $("#shadow_width").val(power_user.shadow_width);
+    $("#shadow_width_counter").text(power_user.shadow_width);
+
     $("#main-text-color-picker").attr('color', power_user.main_text_color);
     $("#italics-color-picker").attr('color', power_user.italics_text_color);
+    $("#quote-color-picker").attr('color', power_user.quote_text_color);
     $("#fastui-bg-color-picker").attr('color', power_user.fastui_bg_color);
     $("#blur-tint-color-picker").attr('color', power_user.blur_tint_color);
+    $("#shadow-color-picker").attr('color', power_user.shadow_color);
 
     for (const theme of themes) {
         const option = document.createElement('option');
@@ -320,11 +391,18 @@ function loadPowerUserSettings(settings, data) {
     sortCharactersList();
 }
 
-function sortCharactersList(selector='.character_select') {
+function sortCharactersList(selector = '.character_select') {
     const sortFunc = (a, b) => power_user.sort_order == 'asc' ? compareFunc(a, b) : compareFunc(b, a);
-    const compareFunc = (first, second) => typeof first[power_user.sort_field] == "string"
-        ? first[power_user.sort_field].localeCompare(second[power_user.sort_field])
-        : first[power_user.sort_field] - second[power_user.sort_field];
+    const compareFunc = (first, second) => {
+        switch (power_user.sort_rule) {
+            case 'boolean':
+                return Number(first[power_user.sort_field] == "true") - Number(second[power_user.sort_field] == "true");
+            default:
+                return typeof first[power_user.sort_field] == "string"
+                    ? first[power_user.sort_field].localeCompare(second[power_user.sort_field])
+                    : first[power_user.sort_field] - second[power_user.sort_field];
+        }
+    };
 
     if (power_user.sort_field == undefined || characters.length === 0) {
         return;
@@ -346,6 +424,7 @@ $(document).ready(() => {
 
     $("#pygmalion_formatting").change(function (e) {
         power_user.pygmalion_formatting = Number($(this).find(":selected").val());
+        getStatus();
         saveSettingsDebounced();
     });
 
@@ -366,6 +445,16 @@ $(document).ready(() => {
 
     $("#disable-personality-formatting-checkbox").change(function () {
         power_user.disable_personality_formatting = !!$(this).prop('checked');
+        saveSettingsDebounced();
+    });
+
+    $("#disable-examples-formatting-checkbox").change(function () {
+        power_user.disable_examples_formatting = !!$(this).prop('checked');
+        saveSettingsDebounced();
+    })
+
+    $("#disable-start-formatting-checkbox").change(function () {
+        power_user.disable_start_formatting = !!$(this).prop('checked');
         saveSettingsDebounced();
     });
 
@@ -397,6 +486,45 @@ $(document).ready(() => {
         switchWaifuMode();
     });
 
+    $("#movingUImode").change(function () {
+        power_user.movingUI = $(this).prop("checked");
+        localStorage.setItem(storage_keys.movingUI, power_user.movingUI);
+        switchMovingUI();
+    });
+
+    $("#noShadowsmode").change(function () {
+        power_user.noShadows = $(this).prop("checked");
+        localStorage.setItem(storage_keys.noShadows, power_user.noShadows);
+        noShadows();
+    });
+
+    $("#movingUIreset").on('click', function () {
+
+        document.getElementById("sheld").style.top = '';
+        document.getElementById("sheld").style.left = '';
+        document.getElementById("sheld").style.height = '';
+        document.getElementById("sheld").style.width = '';
+
+        document.getElementById("left-nav-panel").style.top = '';
+        document.getElementById("left-nav-panel").style.left = '';
+        document.getElementById("left-nav-panel").style.height = '';
+        document.getElementById("left-nav-panel").style.width = '';
+
+        document.getElementById("right-nav-panel").style.top = '';
+        document.getElementById("right-nav-panel").style.left = '';
+        document.getElementById("right-nav-panel").style.right = '';
+        document.getElementById("right-nav-panel").style.height = '';
+        document.getElementById("right-nav-panel").style.width = '';
+
+        document.getElementById("expression-holder").style.top = '';
+        document.getElementById("expression-holder").style.left = '';
+        document.getElementById("expression-holder").style.right = '';
+        document.getElementById("expression-holder").style.bottom = '';
+        document.getElementById("expression-holder").style.height = '';
+        document.getElementById("expression-holder").style.width = '';
+
+    })
+
     $(`input[name="avatar_style"]`).on('input', function (e) {
         power_user.avatar_style = Number(e.target.value);
         localStorage.setItem(storage_keys.avatar_style, power_user.avatar_style);
@@ -416,18 +544,25 @@ $(document).ready(() => {
         applySheldWidth();
     });
 
-    $(`input[name="font_scale"]`).on('input', function (e) {
+    $(`input[name="font_scale"]`).on('input', async function (e) {
         power_user.font_scale = Number(e.target.value);
         $("#font_scale_counter").text(power_user.font_scale);
         localStorage.setItem(storage_keys.font_scale, power_user.font_scale);
-        applyFontScale();
+        await applyFontScale();
     });
 
-    $(`input[name="blur_strength"]`).on('input', function (e) {
+    $(`input[name="blur_strength"]`).on('input', async function (e) {
         power_user.blur_strength = Number(e.target.value);
         $("#blur_strength_counter").text(power_user.blur_strength);
         localStorage.setItem(storage_keys.blur_strength, power_user.blur_strength);
-        applyBlurStrength();
+        await applyBlurStrength();
+    });
+
+    $(`input[name="shadow_width"]`).on('input', async function (e) {
+        power_user.shadow_width = Number(e.target.value);
+        $("#shadow_width_counter").text(power_user.shadow_width);
+        localStorage.setItem(storage_keys.shadow_width, power_user.shadow_width);
+        await applyShadowWidth();
     });
 
     $("#main-text-color-picker").on('change', (evt) => {
@@ -442,6 +577,12 @@ $(document).ready(() => {
         saveSettingsDebounced();
     });
 
+    $("#quote-color-picker").on('change', (evt) => {
+        power_user.quote_text_color = evt.detail.rgba;
+        applyThemeColor('quote');
+        saveSettingsDebounced();
+    });
+
     $("#fastui-bg-color-picker").on('change', (evt) => {
         power_user.fastui_bg_color = evt.detail.rgba;
         applyThemeColor('fastUIBG');
@@ -451,6 +592,12 @@ $(document).ready(() => {
     $("#blur-tint-color-picker").on('change', (evt) => {
         power_user.blur_tint_color = evt.detail.rgba;
         applyThemeColor('blurTint');
+        saveSettingsDebounced();
+    });
+
+    $("#shadow-color-picker").on('change', (evt) => {
+        power_user.shadow_color = evt.detail.rgba;
+        applyThemeColor('shadow');
         saveSettingsDebounced();
     });
 
@@ -473,8 +620,11 @@ $(document).ready(() => {
             blur_strength: power_user.blur_strength,
             main_text_color: power_user.main_text_color,
             italics_text_color: power_user.italics_text_color,
+            quote_text_color: power_user.quote_text_color,
             fastui_bg_color: power_user.fastui_bg_color,
             blur_tint_color: power_user.blur_tint_color,
+            shadow_color: power_user.shadow_color,
+            shadow_width: power_user.shadow_width,
         };
 
         const response = await fetch('/savetheme', {
@@ -516,9 +666,15 @@ $(document).ready(() => {
         saveSettingsDebounced();
     });
 
+    $("#auto_save_msg_edits").on('input', function () {
+        power_user.auto_save_msg_edits = !!$(this).prop('checked');
+        saveSettingsDebounced();
+    });
+
     $("#character_sort_order").on('change', function () {
         power_user.sort_field = $(this).find(":selected").data('field');
         power_user.sort_order = $(this).find(":selected").data('order');
+        power_user.sort_rule = $(this).find(":selected").data('rule');
         sortCharactersList();
         saveSettingsDebounced();
     });
@@ -528,10 +684,29 @@ $(document).ready(() => {
         saveSettingsDebounced();
     });
 
-
     $("#multigen_next_chunks").on('input', function () {
         power_user.multigen_next_chunks = Number($(this).val());
         saveSettingsDebounced();
+    });
+
+    $('#auto_fix_generated_markdown').on('input', function () {
+         power_user.auto_fix_generated_markdown  = !!$(this).prop('checked');
+         saveSettingsDebounced();
+    });
+
+    $('#auto_scroll_chat_to_bottom').on("input", function () {
+        power_user.auto_scroll_chat_to_bottom = !!$(this).prop('checked');
+        saveSettingsDebounced();
+    });
+
+    $("#tokenizer").on('change', function () {
+        const value = $(this).find(':selected').val();
+        power_user.tokenizer = Number(value);
+        saveSettingsDebounced();
+
+        // Trigger character editor re-tokenize
+        $("#rm_ch_create_block").trigger('input');
+        $("#character_popup").trigger('input');
     });
 
     $(window).on('focus', function () {
@@ -543,6 +718,7 @@ $(document).ready(() => {
     });
 });
 
+//waifu
     $("#hide-chat-checkbox").change(function () {
       var sheld = document.getElementById("sheld");
       sheld.style.display = this.checked ? "none" : "grid";
@@ -558,7 +734,7 @@ $(document).ready(function() {
     	$("#sheld").css("max-width", "var(--sheldWidth)");
     	$("#sheld").css("top", "41px");
     	$("#sheld").css("bottom", "0");
-		$("#sheld").css("left", "0");
+		$("#sheld").css("left", "calc((100svw - var(--sheldWidth))/2)");
 	    $("img.expression").css("max-width", "100%");  
     	$("img.expression").css("height", "none"); 	
 	  }
@@ -567,24 +743,33 @@ $(document).ready(function() {
       if (this.checked) {
     	$(".expression-holder").css("max-width", "100%");  
         $(".expression-holder").css("left", "-20%");
-    	$(".expression-holder").css("height", "100%"); 		
+    	$(".expression-holder").css("height", "100%"); 	
+    	$(".expression-holder").css("width", "100%"); 			
     	$("img.expression").css("max-width", "100%");  
-    	$("img.expression").css("height", "90vh"); 
-        $("#sheld").css("left", "40%");
+    	$("img.expression").css("height", "100vh"); 
+        $("#sheld").css("left", "50%");
     	$("#sheld").css("width", "45%");
 		$("top-bar").css("left", "40%");
-      } else {
-        $(".expression-holder").css("left", "auto");
-    	$(".expression-holder").css("max-width", "calc((100vw - 800px)/2)");
-	    $(".expression-holder").css("height", "auto"); 		
-        $("#sheld").css("left", "0");
-    	$("#sheld").css("max-width", "50%");
-    	$("img.expression").css("max-width", "100%");  
-	    $("img.expression").css("height", "none"); 	
-		$("top-bar").css("left", "0");
       }
     });
+    $("#ui2-style-checkbox").change(function () {
+      if (this.checked) {
+    	$(".expression-holder").css("max-width", "100%");  
+        $(".expression-holder").css("left", "none");
+    	$(".expression-holder").css("height", "50%"); 	
+    	$(".expression-holder").css("width", "100%"); 				
+    	$(".expression-holder").css("top", "5%"); 			
+    	$("img.expression").css("max-width", "100%");  
+    	$("img.expression").css("height", "50vh"); 
+    	$("#sheld").css("left", "none");		
+    	$("#sheld").css("width", "45%");
+    	$("#sheld").css("height", "50%");		
+    	$("#sheld").css("top", "50%");		
+		$("#chat").css("border-radius", "20px 20px 0 0");	
+      }
+    });	
 });
+
 $(document).ready(function() {
     $("#breathing-checkbox").change(function() {
         if(this.checked) {
@@ -594,3 +779,22 @@ $(document).ready(function() {
         }
     });
 });
+
+$(document).ready(function() {
+	$("#shadow-checkbox").prop('checked', true);
+    $("#shadow-checkbox").change(function() {
+        if(this.checked) {
+			$(".expression-holder").css("filter", "drop-shadow(20px 20px 20px black)");
+        } else {
+			$(".expression-holder").css("filter", "drop-shadow(2px 2px 20px grey)");
+        }
+    });
+});
+
+//waifu mobile
+function switchwaifum() {
+    const waifum = localStorage.getItem(storage_keys.waifum);
+    power_user.waifum = waifum === null ? false : waifum == "true";
+    $("body").toggleClass("waifum", power_user.waifum);
+    scrollChatToBottom();
+}

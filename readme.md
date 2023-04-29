@@ -1,5 +1,5 @@
 This fork includes temporary code and UI components for changing the UI to Waifu mode, and nothing more.
-From the dev branch of Silly Tavern, commit a563a45bf050a394653dfe3ccee2c74c51b3f7e1, it was forked.
+From the dev branch of Silly Tavern, commit b629ddcaf429eec4cfc309e7245c584be580e714, it was forked.
 
 ![Animation](https://user-images.githubusercontent.com/123547699/232253201-e5e022d6-0c30-4052-93be-1fe2e301a902.gif)
 
